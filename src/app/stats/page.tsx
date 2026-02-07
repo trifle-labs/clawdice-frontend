@@ -1,47 +1,43 @@
 "use client";
 
-import { Dice5, Coins, Users, BarChart3, TrendingUp, Clock } from "lucide-react";
+import { Dice5, Coins, Users, BarChart3, TrendingUp } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { useState } from "react";
+import { useRecentBets, useStats, formatBetForDisplay, formatStatsForDisplay } from "@/hooks/useIndexer";
+import { useReadContract } from "wagmi";
 import { formatEther } from "viem";
-
-// Mock data - would be fetched from contract/indexer in production
-const mockBets = Array.from({ length: 20 }, (_, i) => ({
-  id: i + 1,
-  player: `0x${Math.random().toString(16).slice(2, 6)}...${Math.random().toString(16).slice(2, 6)}`,
-  amount: BigInt(Math.floor(Math.random() * 500 + 10)) * BigInt("1000000000000000000"),
-  odds: Math.floor(Math.random() * 90 + 5),
-  won: Math.random() > 0.5,
-  payout: BigInt(0),
-  timestamp: Date.now() - i * 60000,
-})).map((bet) => ({
-  ...bet,
-  payout: bet.won ? (bet.amount * BigInt(100)) / BigInt(bet.odds) : BigInt(0),
-}));
-
-function formatAmount(amount: bigint): string {
-  const num = parseFloat(formatEther(amount));
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-  return num.toFixed(0);
-}
-
-function formatTime(timestamp: number): string {
-  const diff = Date.now() - timestamp;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
+import { CONTRACTS, VAULT_ABI } from "@/lib/contracts";
 
 export default function StatsPage() {
   const [filter, setFilter] = useState<"all" | "wins" | "losses">("all");
 
-  const filteredBets = mockBets.filter((bet) => {
-    if (filter === "wins") return bet.won;
-    if (filter === "losses") return !bet.won;
+  // Fetch from indexer
+  const { data: bets, isLoading: betsLoading } = useRecentBets(50);
+  const { data: stats, isLoading: statsLoading } = useStats();
+
+  // Fetch vault TVL from contract
+  const { data: vaultTVL } = useReadContract({
+    address: CONTRACTS.baseSepolia.clawdiceVault,
+    abi: VAULT_ABI,
+    functionName: "totalAssets",
+  });
+
+  const displayStats = stats ? formatStatsForDisplay(stats) : null;
+  const displayBets = bets?.map(formatBetForDisplay) || [];
+
+  const filteredBets = displayBets.filter((bet) => {
+    if (filter === "wins") return bet.result === "won";
+    if (filter === "losses") return bet.result === "lost";
     return true;
   });
+
+  const formatTVL = (tvl: bigint | undefined) => {
+    if (!tvl) return "...";
+    const num = Number(formatEther(tvl));
+    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M CLAW`;
+    if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K CLAW`;
+    return `${num.toFixed(0)} CLAW`;
+  };
 
   return (
     <div className="min-h-screen gradient-dark py-8">
@@ -52,36 +48,34 @@ export default function StatsPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <StatCard
             label="Total Volume"
-            value="1.2M CLAW"
+            value={statsLoading ? "..." : displayStats?.totalVolume || "0 CLAW"}
             icon={<Coins className="w-6 h-6" />}
           />
           <StatCard
             label="Total Bets"
-            value="45,678"
+            value={statsLoading ? "..." : displayStats?.totalBets || "0"}
             icon={<Dice5 className="w-6 h-6" />}
           />
           <StatCard
             label="Unique Players"
-            value="1,234"
+            value={statsLoading ? "..." : displayStats?.uniquePlayers || "0"}
             icon={<Users className="w-6 h-6" />}
           />
           <StatCard
             label="House Profit"
-            value="12.3K CLAW"
-            subValue="+2.4% 24h"
+            value={statsLoading ? "..." : displayStats?.houseProfit || "0 CLAW"}
             trend="up"
             icon={<TrendingUp className="w-6 h-6" />}
           />
           <StatCard
             label="Vault TVL"
-            value="500K CLAW"
+            value={formatTVL(vaultTVL)}
             icon={<BarChart3 className="w-6 h-6" />}
           />
           <StatCard
             label="30d APY"
-            value="8.5%"
-            subValue="+0.3%"
-            trend="up"
+            value="--"
+            subValue="Coming soon"
             icon={<TrendingUp className="w-6 h-6" />}
           />
         </div>
@@ -124,58 +118,61 @@ export default function StatsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-gray-400 border-b border-primary/20">
-                  <th className="pb-3 font-medium">Time</th>
-                  <th className="pb-3 font-medium">Player</th>
-                  <th className="pb-3 font-medium">Amount</th>
-                  <th className="pb-3 font-medium">Odds</th>
-                  <th className="pb-3 font-medium">Result</th>
-                  <th className="pb-3 font-medium">Payout</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBets.map((bet) => (
-                  <tr
-                    key={bet.id}
-                    className="border-b border-primary/10 hover:bg-white/5"
-                  >
-                    <td className="py-3 text-gray-400">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        {formatTime(bet.timestamp)}
-                      </div>
-                    </td>
-                    <td className="py-3 font-mono text-sm">{bet.player}</td>
-                    <td className="py-3 text-accent font-medium">
-                      {formatAmount(bet.amount)} CLAW
-                    </td>
-                    <td className="py-3 text-primary">{bet.odds}%</td>
-                    <td className="py-3">
-                      <span
-                        className={`px-2 py-1 rounded text-sm font-medium ${
-                          bet.won
-                            ? "bg-success/20 text-success"
-                            : "bg-danger/20 text-danger"
-                        }`}
-                      >
-                        {bet.won ? "WON" : "LOST"}
-                      </span>
-                    </td>
-                    <td className="py-3 font-medium">
-                      {bet.won ? (
-                        <span className="text-success">
-                          +{formatAmount(bet.payout)} CLAW
-                        </span>
-                      ) : (
-                        <span className="text-gray-500">-</span>
-                      )}
-                    </td>
+            {betsLoading ? (
+              <div className="text-center py-8 text-gray-500">Loading bets...</div>
+            ) : filteredBets.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No bets found</div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="text-left text-gray-400 border-b border-primary/20">
+                    <th className="pb-3 font-medium">Bet ID</th>
+                    <th className="pb-3 font-medium">Player</th>
+                    <th className="pb-3 font-medium">Amount</th>
+                    <th className="pb-3 font-medium">Odds</th>
+                    <th className="pb-3 font-medium">Result</th>
+                    <th className="pb-3 font-medium">Payout</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredBets.map((bet) => (
+                    <tr
+                      key={bet.id}
+                      className="border-b border-primary/10 hover:bg-white/5"
+                    >
+                      <td className="py-3 text-gray-400 font-mono text-sm">
+                        #{bet.id}
+                      </td>
+                      <td className="py-3 font-mono text-sm">{bet.player}</td>
+                      <td className="py-3 text-accent font-medium">
+                        {bet.amount} CLAW
+                      </td>
+                      <td className="py-3 text-primary">{bet.odds}</td>
+                      <td className="py-3">
+                        <span
+                          className={`px-2 py-1 rounded text-sm font-medium ${
+                            bet.result === "won"
+                              ? "bg-success/20 text-success"
+                              : bet.result === "lost"
+                              ? "bg-danger/20 text-danger"
+                              : "bg-primary/20 text-primary"
+                          }`}
+                        >
+                          {bet.result.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="py-3 font-medium">
+                        {bet.result === "won" ? (
+                          <span className="text-success">+{bet.payout} CLAW</span>
+                        ) : (
+                          <span className="text-gray-500">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>

@@ -5,12 +5,9 @@ import {
   TrendingUp,
   Vault,
   Zap,
-  BarChart3,
-  Users,
-  Coins,
 } from "lucide-react";
 import { LiveTicker } from "@/components/LiveTicker";
-import { StatCard } from "@/components/StatCard";
+import { HomeStats } from "@/components/HomeStats";
 
 const features = [
   {
@@ -88,30 +85,7 @@ export default function Home() {
       {/* Stats Preview */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            <StatCard
-              label="Total Volume"
-              value="1.2M CLAW"
-              icon={<Coins className="w-8 h-8" />}
-            />
-            <StatCard
-              label="Total Bets"
-              value="45,678"
-              icon={<Dice5 className="w-8 h-8" />}
-            />
-            <StatCard
-              label="Unique Players"
-              value="1,234"
-              icon={<Users className="w-8 h-8" />}
-            />
-            <StatCard
-              label="Vault TVL"
-              value="500K CLAW"
-              subValue="8.5% APY"
-              trend="up"
-              icon={<BarChart3 className="w-8 h-8" />}
-            />
-          </div>
+          <HomeStats />
 
           <div className="text-center mt-8">
             <Link
