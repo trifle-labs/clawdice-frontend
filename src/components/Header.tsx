@@ -2,9 +2,14 @@
 
 import Link from "next/link";
 import { ConnectKitButton } from "connectkit";
-import { Dice5 } from "lucide-react";
+import { Dice5, Bot } from "lucide-react";
+import { NetworkSwitcher } from "./NetworkSwitcher";
+import { useState } from "react";
+import { DEFAULT_NETWORK } from "@/lib/networks";
 
 export function Header() {
+  const [currentNetwork, setCurrentNetwork] = useState(DEFAULT_NETWORK);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -17,6 +22,13 @@ export function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
+            <Link
+              href="/agents"
+              className="text-accent hover:text-accent-light transition-colors flex items-center gap-1"
+            >
+              <Bot className="w-4 h-4" />
+              For Agents
+            </Link>
             <Link
               href="/stats"
               className="text-gray-300 hover:text-white transition-colors"
@@ -45,7 +57,13 @@ export function Header() {
             </a>
           </nav>
 
-          <ConnectKitButton />
+          <div className="flex items-center gap-3">
+            <NetworkSwitcher
+              currentNetwork={currentNetwork}
+              onNetworkChange={setCurrentNetwork}
+            />
+            <ConnectKitButton />
+          </div>
         </div>
       </div>
     </header>
