@@ -14,6 +14,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ConnectKitProvider
           theme="midnight"
+          options={{
+            hideFamily: true,
+          }}
           customTheme={{
             "--ck-font-family": "Inter, system-ui, sans-serif",
             "--ck-accent-color": "#7C3AED",
