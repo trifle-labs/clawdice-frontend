@@ -1,5 +1,6 @@
 import { Bot, Terminal, Zap, Shield, Code, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { getActiveNetwork } from "@/lib/networks";
 
 const SKILL_INSTALL_COMMAND = `curl -sSL https://raw.githubusercontent.com/trifle-labs/clawdice/main/skills/clawdice/install.sh | bash`;
 
@@ -21,6 +22,9 @@ Play provably fair dice on Base blockchain.
 - \`/clawdice fibonacci <rounds>\` - Run Fibonacci strategy`;
 
 export default function AgentsPage() {
+  const network = getActiveNetwork();
+  const { clawdice, clawdiceVault, clawToken } = network.contracts;
+
   return (
     <div className="min-h-screen gradient-dark py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -137,15 +141,15 @@ if (result.won) {
           <div className="space-y-3 font-mono text-sm">
             <div className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
               <span className="text-gray-400">Clawdice</span>
-              <code className="text-primary">0xd64135C2AeFA49f75421D07d5bb15e8A5DADfC35</code>
+              <code className="text-primary">{clawdice}</code>
             </div>
             <div className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
               <span className="text-gray-400">Vault</span>
-              <code className="text-primary">0x705FA1820DA34B41f36c3b0459112Ed7adFa8ed2</code>
+              <code className="text-primary">{clawdiceVault}</code>
             </div>
             <div className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
               <span className="text-gray-400">CLAW Token</span>
-              <code className="text-primary">0xe0fF57065914962a70D37bfb6d980976822e4B73</code>
+              <code className="text-primary">{clawToken}</code>
             </div>
           </div>
         </div>

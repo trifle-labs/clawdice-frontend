@@ -1,7 +1,12 @@
 import { Dice5, Github, Twitter } from "lucide-react";
 import Link from "next/link";
+import { getActiveNetwork } from "@/lib/networks";
 
 export function Footer() {
+  const network = getActiveNetwork();
+  const { clawdice, clawdiceVault, clawToken } = network.contracts;
+  const explorerBase = "https://sepolia.basescan.org/address";
+
   return (
     <footer className="border-t border-primary/20 bg-background/80 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -70,7 +75,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm font-mono">
               <li>
                 <a
-                  href="https://sepolia.basescan.org/address/0xd64135C2AeFA49f75421D07d5bb15e8A5DADfC35"
+                  href={`${explorerBase}/${clawdice}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-primary transition-colors"
@@ -80,7 +85,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://sepolia.basescan.org/address/0x705FA1820DA34B41f36c3b0459112Ed7adFa8ed2"
+                  href={`${explorerBase}/${clawdiceVault}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-primary transition-colors"
@@ -90,7 +95,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://sepolia.basescan.org/address/0xe0fF57065914962a70D37bfb6d980976822e4B73"
+                  href={`${explorerBase}/${clawToken}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-primary transition-colors"

@@ -2,8 +2,13 @@
 // Using official @indexsupply/indexsupply.js library
 
 import { query, queryLive } from "@indexsupply/indexsupply.js";
+import { getActiveNetwork } from "./networks";
 
-const BASE_SEPOLIA_CHAIN = 84532n;
+// Get addresses from central config
+const network = getActiveNetwork();
+const BASE_SEPOLIA_CHAIN = BigInt(network.indexerChainId);
+const CLAWDICE_ADDRESS = network.contracts.clawdice;
+const VAULT_ADDRESS = network.contracts.clawdiceVault;
 
 // Event signatures from Clawdice contract
 const EVENT_SIGNATURES = {
@@ -16,9 +21,6 @@ const EVENT_SIGNATURES = {
   Withdraw:
     "Withdraw(address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares)",
 };
-
-const CLAWDICE_ADDRESS = "0x8eE2FCe0b8Bd17D4C958163dd2ef6877BA9eED7B";
-const VAULT_ADDRESS = "0xA186fa18f9889097F7F7746378932b50f5A91E61";
 
 export interface BetEvent {
   betId: string;
