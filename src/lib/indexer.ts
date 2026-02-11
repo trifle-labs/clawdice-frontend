@@ -1,7 +1,7 @@
 // Index Supply integration for Clawdice events
 // Using official @indexsupply/indexsupply.js library
 
-import { query, queryLive, type Response } from "@indexsupply/indexsupply.js";
+import { query, queryLive } from "@indexsupply/indexsupply.js";
 
 const BASE_SEPOLIA_CHAIN = 84532n;
 
