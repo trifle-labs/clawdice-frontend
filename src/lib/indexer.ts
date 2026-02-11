@@ -12,8 +12,8 @@ const EVENT_SIGNATURES = {
   Withdraw: "Withdraw(address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares)",
 };
 
-const CLAWDICE_ADDRESS = "0xd64135C2AeFA49f75421D07d5bb15e8A5DADfC35";
-const VAULT_ADDRESS = "0x705FA1820DA34B41f36c3b0459112Ed7adFa8ed2";
+const CLAWDICE_ADDRESS = "0x8eE2FCe0b8Bd17D4C958163dd2ef6877BA9eED7B";
+const VAULT_ADDRESS = "0xA186fa18f9889097F7F7746378932b50f5A91E61";
 
 export interface BetEvent {
   betId: string;
