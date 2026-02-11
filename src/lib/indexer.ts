@@ -130,7 +130,7 @@ export async function getStats(apiKey?: string): Promise<IndexerStats> {
     query: `
       SELECT
         SUM(amount) as total_volume,
-        COUNT(*) as total_bets,
+        COUNT(betId) as total_bets,
         COUNT(DISTINCT player) as unique_players
       FROM BetPlaced
       WHERE address = '${CLAWDICE_ADDRESS}'
