@@ -10,12 +10,12 @@ const BASE_SEPOLIA_CHAIN = BigInt(network.indexerChainId);
 const CLAWDICE_ADDRESS = network.contracts.clawdice;
 const VAULT_ADDRESS = network.contracts.clawdiceVault;
 
-// Event signatures from Clawdice contract
+// Event signatures from Clawdice contract (must match exactly!)
 const EVENT_SIGNATURES = {
   BetPlaced:
-    "BetPlaced(uint256 indexed betId, address indexed player, uint256 amount, uint64 targetOddsE18)",
+    "BetPlaced(uint256 indexed betId, address indexed player, uint128 amount, uint64 targetOddsE18, uint64 blockNumber)",
   BetClaimed:
-    "BetClaimed(uint256 indexed betId, address indexed player, bool won, uint256 payout)",
+    "BetClaimed(uint256 indexed betId, address indexed player, uint256 payout)",
   Deposit:
     "Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares)",
   Withdraw:
@@ -64,7 +64,6 @@ export async function getRecentBets(
         p.amount,
         p.targetOddsE18,
         p.block_num,
-        c.won,
         c.payout
       FROM BetPlaced p
       LEFT JOIN BetClaimed c ON p.betId = c.betId
@@ -80,7 +79,8 @@ export async function getRecentBets(
     amount: BigInt(row.amount as string),
     odds: Number(BigInt(row.targetOddsE18 as string) / BigInt(10 ** 16)),
     blockNumber: Number(row.block_num),
-    won: row.won !== null ? Boolean(row.won) : undefined,
+    // won is inferred: if payout exists and > 0, player won
+    won: row.payout !== null ? BigInt(row.payout as string) > 0n : undefined,
     payout: row.payout !== null ? BigInt(row.payout as string) : undefined,
   }));
 }
@@ -101,7 +101,6 @@ export async function getBetsByPlayer(
         p.amount,
         p.targetOddsE18,
         p.block_num,
-        c.won,
         c.payout
       FROM BetPlaced p
       LEFT JOIN BetClaimed c ON p.betId = c.betId
@@ -118,7 +117,7 @@ export async function getBetsByPlayer(
     amount: BigInt(row.amount as string),
     odds: Number(BigInt(row.targetOddsE18 as string) / BigInt(10 ** 16)),
     blockNumber: Number(row.block_num),
-    won: row.won !== null ? Boolean(row.won) : undefined,
+    won: row.payout !== null ? BigInt(row.payout as string) > 0n : undefined,
     payout: row.payout !== null ? BigInt(row.payout as string) : undefined,
   }));
 }
@@ -147,7 +146,7 @@ export async function getStats(apiKey?: string): Promise<IndexerStats> {
     query: `
       SELECT SUM(payout) as total_payouts
       FROM BetClaimed
-      WHERE address = '${CLAWDICE_ADDRESS}' AND won = true
+      WHERE address = '${CLAWDICE_ADDRESS}'
     `,
   });
 
