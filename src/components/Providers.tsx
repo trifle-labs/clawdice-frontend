@@ -13,11 +13,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <ConnectKitProvider
-          theme="midnight"
+          theme="soft"
+          mode="light"
           customTheme={{
-            "--ck-font-family": "Inter, system-ui, sans-serif",
-            "--ck-accent-color": "#7C3AED",
+            "--ck-font-family": "Nunito, system-ui, sans-serif",
+            "--ck-accent-color": "#ec4899",
             "--ck-accent-text-color": "#ffffff",
+            "--ck-border-radius": "16px",
           }}
         >
           {children}
