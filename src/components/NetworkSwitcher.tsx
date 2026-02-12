@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Circle } from "lucide-react";
+import { ChevronDown, Circle, AlertCircle } from "lucide-react";
+import { useChainId, useSwitchChain, useAccount } from "wagmi";
 import { NETWORKS, DEFAULT_NETWORK } from "@/lib/networks";
+import { baseSepolia } from "wagmi/chains";
 
 interface NetworkSwitcherProps {
   currentNetwork: string;
@@ -12,6 +14,38 @@ interface NetworkSwitcherProps {
 export function NetworkSwitcher({ currentNetwork, onNetworkChange }: NetworkSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
   const current = NETWORKS[currentNetwork] || NETWORKS[DEFAULT_NETWORK];
+  const chainId = useChainId();
+  const { isConnected } = useAccount();
+  const { switchChain, isPending } = useSwitchChain();
+  
+  // Check if wallet is on wrong network
+  const isWrongNetwork = isConnected && chainId !== baseSepolia.id;
+  
+  const handleSwitchNetwork = async (networkId: string) => {
+    const network = NETWORKS[networkId];
+    if (!network?.isLive) return;
+    
+    // Actually switch the wallet chain
+    if (switchChain) {
+      switchChain({ chainId: network.chain.id });
+    }
+    onNetworkChange(networkId);
+    setIsOpen(false);
+  };
+
+  // If on wrong network, show switch button
+  if (isWrongNetwork) {
+    return (
+      <button
+        onClick={() => handleSwitchNetwork("baseSepolia")}
+        disabled={isPending}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/20 border border-red-500/50 hover:bg-red-500/30 transition-colors text-sm text-red-400"
+      >
+        <AlertCircle className="w-4 h-4" />
+        <span>{isPending ? "Switching..." : "Switch to Base Sepolia"}</span>
+      </button>
+    );
+  }
 
   return (
     <div className="relative">
@@ -33,13 +67,8 @@ export function NetworkSwitcher({ currentNetwork, onNetworkChange }: NetworkSwit
             {Object.entries(NETWORKS).map(([id, network]) => (
               <button
                 key={id}
-                onClick={() => {
-                  if (network.isLive) {
-                    onNetworkChange(id);
-                  }
-                  setIsOpen(false);
-                }}
-                disabled={!network.isLive}
+                onClick={() => handleSwitchNetwork(id)}
+                disabled={!network.isLive || isPending}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
                   network.isLive
                     ? "hover:bg-white/10 cursor-pointer"
