@@ -35,6 +35,14 @@ export function Header() {
             <NavLink href="/stats">Stats</NavLink>
             <NavLink href="/app/stake">Stake</NavLink>
             <NavLink href="/app/play">Play</NavLink>
+            <a
+              href="https://app.uniswap.org/swap?outputCurrency=0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c&chain=base_sepolia"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent-dark hover:text-accent transition-colors font-medium"
+            >
+              Get CLAW ↗
+            </a>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -64,6 +72,15 @@ export function Header() {
             <NavLink href="/stats" onClick={() => setMenuOpen(false)}>Stats</NavLink>
             <NavLink href="/app/stake" onClick={() => setMenuOpen(false)}>Stake</NavLink>
             <NavLink href="/app/play" onClick={() => setMenuOpen(false)}>Play</NavLink>
+            <a
+              href="https://app.uniswap.org/swap?outputCurrency=0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c&chain=base_sepolia"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent-dark hover:text-accent transition-colors font-medium"
+              onClick={() => setMenuOpen(false)}
+            >
+              Get CLAW ↗
+            </a>
           </nav>
           <div className="mt-4">
             <ConnectKitButton />

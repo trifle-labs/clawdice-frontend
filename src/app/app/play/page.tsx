@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance } from "wagmi";
 import { formatEther, parseEther, decodeEventLog } from "viem";
-import { Dice5, Volume2, VolumeX, Info, Clock, Zap } from "lucide-react";
+import { Dice5, Volume2, VolumeX, Info, Clock, Zap, ExternalLink, Coins } from "lucide-react";
 import { ConnectKitButton } from "connectkit";
 import { CONTRACTS, CLAWDICE_ABI, ERC20_ABI } from "@/lib/contracts";
 import clsx from "clsx";
@@ -369,12 +369,25 @@ export default function PlayPage() {
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-foreground/50 mt-1">
-                  Balance: {useETH 
-                    ? `${ethBalance ? Number(ethBalance.formatted).toFixed(4) : "0"} ETH`
-                    : `${userTokenBalance ? Number(formatEther(userTokenBalance)).toLocaleString() : "0"} CLAW`
-                  }
-                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-foreground/50">
+                    Balance: {useETH 
+                      ? `${ethBalance ? Number(ethBalance.formatted).toFixed(4) : "0"} ETH`
+                      : `${userTokenBalance ? Number(formatEther(userTokenBalance)).toLocaleString() : "0"} CLAW`
+                    }
+                  </p>
+                  {!useETH && (
+                    <a
+                      href={`https://app.uniswap.org/swap?outputCurrency=0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c&chain=base_sepolia`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-accent-dark hover:text-accent flex items-center gap-1"
+                    >
+                      <Coins className="w-3 h-3" />
+                      Get CLAW
+                    </a>
+                  )}
+                </div>
               </div>
 
               {/* Odds Slider */}
@@ -430,12 +443,31 @@ export default function PlayPage() {
           ) : null}
         </div>
 
+        {/* Get CLAW Callout - show when connected but low balance */}
+        {mounted && isConnected && userTokenBalance !== undefined && userTokenBalance < parseEther("1") && (
+          <a
+            href={`https://app.uniswap.org/swap?outputCurrency=0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c&chain=base_sepolia`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="card-kawaii p-4 mt-4 flex items-center justify-between hover:bg-white/80 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Coins className="w-5 h-5 text-accent-dark" />
+              <div>
+                <p className="font-semibold text-foreground text-sm">Need CLAW tokens?</p>
+                <p className="text-xs text-foreground/60">Swap ETH for CLAW on Uniswap</p>
+              </div>
+            </div>
+            <ExternalLink className="w-4 h-4 text-foreground/40" />
+          </a>
+        )}
+
         {/* Info Box */}
         <div className="card-kawaii p-4 mt-4 flex gap-3">
           <Info className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
           <p className="text-xs text-foreground/60">
             Result determined by next block&apos;s hash. 1% house edge. Claim within 255 blocks (~8.5 min).
-            {useETH && " ETH is swapped to CLAW atomically via Uniswap V4."}
+            {useETH && " ETH is swapped to CLAW atomically via Uniswap V4 (requires pool liquidity)."}
           </p>
         </div>
       </div>
