@@ -3,7 +3,7 @@ import { baseSepolia } from "wagmi/chains";
 import { getDefaultConfig } from "connectkit";
 
 // WalletConnect Project ID from env (set in Netlify)
-const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "";
+const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WC_PROJECT_ID || "";
 
 export const config = createConfig(
   getDefaultConfig({
