@@ -2,9 +2,8 @@ import { http, createConfig } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
 import { getDefaultConfig } from "connectkit";
 
-// WalletConnect Project ID (from WalletConnect Cloud dashboard)
-// Format: 32-char hex without dashes
-const WALLETCONNECT_PROJECT_ID = "223fbf1b7d2144e7b34723899c9e76e6";
+// WalletConnect Project ID from env (set in Netlify)
+const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "";
 
 export const config = createConfig(
   getDefaultConfig({
@@ -17,7 +16,6 @@ export const config = createConfig(
     appDescription: "Provably fair on-chain dice game",
     appUrl: "https://clawdice.xyz",
     appIcon: "https://clawdice.xyz/logo.jpg",
-    // SSR safety
     ssr: true,
   })
 );
