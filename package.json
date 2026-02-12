@@ -16,6 +16,7 @@
     "lucide-react": "^0.563.0",
     "netlify-cli": "^23.15.1",
     "next": "14.2.35",
+    "permissionless": "^0.3.4",
     "react": "^18",
     "react-dom": "^18",
     "viem": "^2.45.1",

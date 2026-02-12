@@ -8,6 +8,7 @@ import { Dice5, Volume2, VolumeX, Info, Clock, Zap, Coins } from "lucide-react";
 import { ConnectKitButton } from "connectkit";
 import { CONTRACTS, CLAWDICE_ABI, ERC20_ABI } from "@/lib/contracts";
 import { SwapModal } from "@/components/SwapModal";
+import { useSponsoredClaim } from "@/hooks/useSponsoredClaim";
 import clsx from "clsx";
 
 type BetState = "idle" | "approving" | "placing" | "waiting" | "claiming" | "won" | "lost";
@@ -16,6 +17,7 @@ export default function PlayPage() {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
+  const { sponsoredClaim } = useSponsoredClaim();
   const [mounted, setMounted] = useState(false);
   const [amount, setAmount] = useState("");
   const [odds, setOdds] = useState(50);
@@ -155,7 +157,7 @@ export default function PlayPage() {
     }
   }, [isSuccess, receipt, betState, parseBetId, parseResult, queryClient, refetchBalance, resetWrite]);
 
-  // Wait for next block then claim
+  // Wait for next block then claim (try sponsored first, fall back to regular)
   useEffect(() => {
     if (betState === "waiting" && currentBetId && publicClient) {
       const waitAndClaim = async () => {
@@ -163,8 +165,47 @@ export default function PlayPage() {
         await new Promise((resolve) => setTimeout(resolve, 3000));
 
         setBetState("claiming");
+        
+        // Try sponsored claim first (free for user)
+        console.log("Attempting sponsored claim for bet", currentBetId.toString());
+        const sponsoredTxHash = await sponsoredClaim(currentBetId);
+        
+        if (sponsoredTxHash) {
+          console.log("Sponsored claim submitted:", sponsoredTxHash);
+          // Wait for the sponsored tx to be mined
+          try {
+            const receipt = await publicClient.waitForTransactionReceipt({ 
+              hash: sponsoredTxHash,
+              timeout: 60000,
+            });
+            console.log("Sponsored claim confirmed:", receipt.status);
+            
+            // Parse result from receipt
+            for (const log of receipt.logs) {
+              try {
+                const decoded = decodeEventLog({
+                  abi: CLAWDICE_ABI,
+                  data: log.data,
+                  topics: log.topics,
+                });
+                if (decoded.eventName === "BetResolved") {
+                  const { won, payout } = decoded.args as { won: boolean; payout: bigint };
+                  setLastResult({ won, payout });
+                  setBetState(won ? "won" : "lost");
+                  setIsRolling(false);
+                  refetchBalance();
+                  return;
+                }
+              } catch {}
+            }
+          } catch (err) {
+            console.error("Sponsored claim tx failed:", err);
+          }
+        }
+        
+        // Fall back to regular claim if sponsored fails
+        console.log("Falling back to regular claim");
         resetWrite();
-
         writeContract({
           address: CONTRACTS.baseSepolia.clawdice,
           abi: CLAWDICE_ABI,
@@ -175,7 +216,7 @@ export default function PlayPage() {
 
       waitAndClaim();
     }
-  }, [betState, currentBetId, publicClient, writeContract, resetWrite]);
+  }, [betState, currentBetId, publicClient, sponsoredClaim, writeContract, resetWrite, refetchBalance]);
 
   const needsApproval = useCallback(() => {
     if (useETH) return false;
