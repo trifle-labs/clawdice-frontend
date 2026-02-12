@@ -15,8 +15,8 @@ const VAULT_ADDRESS = network.contracts.clawdiceVault;
 const EVENT_SIGNATURES = {
   BetPlaced:
     "BetPlaced(uint256 indexed betId, address indexed player, uint128 amount, uint64 targetOddsE18, uint64 blockNumber)",
-  BetClaimed:
-    "BetClaimed(uint256 indexed betId, address indexed player, uint256 payout)",
+  BetResolved:
+    "BetResolved(uint256 indexed betId, bool won, uint256 payout)",
   Deposit:
     "Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares)",
   Withdraw:
@@ -54,8 +54,8 @@ export async function getRecentBets(
   limit = 50,
   apiKey?: string
 ): Promise<BetEvent[]> {
-  // Fetch bets and claims separately (JOINs timeout on Index Supply)
-  const [betsResult, claimsResult] = await Promise.all([
+  // Fetch bets and resolutions separately (JOINs timeout on Index Supply)
+  const [betsResult, resolvedResult] = await Promise.all([
     query({
       chainId: BASE_SEPOLIA_CHAIN,
       apiKey,
@@ -71,33 +71,36 @@ export async function getRecentBets(
     query({
       chainId: BASE_SEPOLIA_CHAIN,
       apiKey,
-      signatures: [EVENT_SIGNATURES.BetClaimed],
+      signatures: [EVENT_SIGNATURES.BetResolved],
       query: `
-        SELECT betId, payout
-        FROM BetClaimed
+        SELECT betId, won, payout
+        FROM BetResolved
         WHERE address = '${CLAWDICE_ADDRESS}'
       `,
     }),
   ]);
 
-  // Build claims lookup map (columns come back lowercase)
-  const claimsMap = new Map<string, bigint>();
-  for (const row of claimsResult.rows) {
+  // Build resolution lookup map (columns come back lowercase)
+  const resolvedMap = new Map<string, { won: boolean; payout: bigint }>();
+  for (const row of resolvedResult.rows) {
     const r = row as Record<string, unknown>;
-    claimsMap.set(String(r.betid), BigInt(r.payout as string));
+    resolvedMap.set(String(r.betid), {
+      won: Boolean(r.won),
+      payout: BigInt(r.payout as string),
+    });
   }
 
   return betsResult.rows.map((row: Record<string, unknown>) => {
     const betId = String(row.betid);
-    const payout = claimsMap.get(betId);
+    const resolution = resolvedMap.get(betId);
     return {
       betId,
       player: String(row.player),
       amount: BigInt(row.amount as string),
       odds: Number(BigInt(row.targetoddse18 as string) / BigInt(10 ** 16)),
       blockNumber: Number(row.block_num),
-      won: payout !== undefined ? payout > 0n : undefined,
-      payout,
+      won: resolution?.won,
+      payout: resolution?.payout,
     };
   });
 }
@@ -107,8 +110,9 @@ export async function getBetsByPlayer(
   limit = 50,
   apiKey?: string
 ): Promise<BetEvent[]> {
-  // Fetch bets and claims separately (JOINs timeout on Index Supply)
-  const [betsResult, claimsResult] = await Promise.all([
+  // Fetch bets and resolutions separately (JOINs timeout on Index Supply)
+  // Note: BetResolved doesn't have player field, so we fetch all and filter
+  const [betsResult, resolvedResult] = await Promise.all([
     query({
       chainId: BASE_SEPOLIA_CHAIN,
       apiKey,
@@ -125,34 +129,36 @@ export async function getBetsByPlayer(
     query({
       chainId: BASE_SEPOLIA_CHAIN,
       apiKey,
-      signatures: [EVENT_SIGNATURES.BetClaimed],
+      signatures: [EVENT_SIGNATURES.BetResolved],
       query: `
-        SELECT betId, payout
-        FROM BetClaimed
+        SELECT betId, won, payout
+        FROM BetResolved
         WHERE address = '${CLAWDICE_ADDRESS}'
-          AND player = '${player}'
       `,
     }),
   ]);
 
-  // Build claims lookup map (columns come back lowercase)
-  const claimsMap = new Map<string, bigint>();
-  for (const row of claimsResult.rows) {
+  // Build resolution lookup map (columns come back lowercase)
+  const resolvedMap = new Map<string, { won: boolean; payout: bigint }>();
+  for (const row of resolvedResult.rows) {
     const r = row as Record<string, unknown>;
-    claimsMap.set(String(r.betid), BigInt(r.payout as string));
+    resolvedMap.set(String(r.betid), {
+      won: Boolean(r.won),
+      payout: BigInt(r.payout as string),
+    });
   }
 
   return betsResult.rows.map((row: Record<string, unknown>) => {
     const betId = String(row.betid);
-    const payout = claimsMap.get(betId);
+    const resolution = resolvedMap.get(betId);
     return {
       betId,
       player: String(row.player),
       amount: BigInt(row.amount as string),
       odds: Number(BigInt(row.targetoddse18 as string) / BigInt(10 ** 16)),
       blockNumber: Number(row.block_num),
-      won: payout !== undefined ? payout > 0n : undefined,
-      payout,
+      won: resolution?.won,
+      payout: resolution?.payout,
     };
   });
 }
@@ -176,10 +182,10 @@ export async function getStats(apiKey?: string): Promise<IndexerStats> {
     query({
       chainId: BASE_SEPOLIA_CHAIN,
       apiKey,
-      signatures: [EVENT_SIGNATURES.BetClaimed],
+      signatures: [EVENT_SIGNATURES.BetResolved],
       query: `
         SELECT SUM(payout) as total_payouts
-        FROM BetClaimed
+        FROM BetResolved
         WHERE address = '${CLAWDICE_ADDRESS}'
       `,
     }),

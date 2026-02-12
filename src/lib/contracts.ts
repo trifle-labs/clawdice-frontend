@@ -92,8 +92,18 @@ export const CLAWDICE_ABI = [
     inputs: [
       { name: "betId", type: "uint256", indexed: true },
       { name: "player", type: "address", indexed: true },
-      { name: "amount", type: "uint256", indexed: false },
+      { name: "amount", type: "uint128", indexed: false },
       { name: "targetOddsE18", type: "uint64", indexed: false },
+      { name: "blockNumber", type: "uint64", indexed: false },
+    ],
+  },
+  {
+    name: "BetResolved",
+    type: "event",
+    inputs: [
+      { name: "betId", type: "uint256", indexed: true },
+      { name: "won", type: "bool", indexed: false },
+      { name: "payout", type: "uint256", indexed: false },
     ],
   },
   {
@@ -102,7 +112,6 @@ export const CLAWDICE_ABI = [
     inputs: [
       { name: "betId", type: "uint256", indexed: true },
       { name: "player", type: "address", indexed: true },
-      { name: "won", type: "bool", indexed: false },
       { name: "payout", type: "uint256", indexed: false },
     ],
   },
