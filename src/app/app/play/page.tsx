@@ -9,7 +9,9 @@ import { ConnectKitButton } from "connectkit";
 import { CONTRACTS, CLAWDICE_ABI, ERC20_ABI } from "@/lib/contracts";
 import { SwapModal } from "@/components/SwapModal";
 import { useSponsoredClaim } from "@/hooks/useSponsoredClaim";
+import { useAutoReveal } from "@/hooks/useAutoReveal";
 import clsx from "clsx";
+import { X, Check, AlertCircle } from "lucide-react";
 
 type BetState = "idle" | "approving" | "placing" | "waiting" | "claiming" | "won" | "lost";
 
@@ -18,6 +20,7 @@ export default function PlayPage() {
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
   const { sponsoredClaim } = useSponsoredClaim();
+  const { revealedBets, revealingBets, clearRevealed } = useAutoReveal();
   const chainId = useChainId();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const isWrongNetwork = isConnected && chainId !== 84532; // Base Sepolia
@@ -66,6 +69,14 @@ export default function PlayPage() {
     functionName: "getMaxBet",
     args: [BigInt(odds) * BigInt(10 ** 16)],
   });
+
+  // Refetch balance when auto-reveals complete
+  useEffect(() => {
+    if (revealedBets.length > 0) {
+      refetchBalance();
+      queryClient.invalidateQueries({ queryKey: ["readContract"] });
+    }
+  }, [revealedBets.length, refetchBalance, queryClient]);
 
   // Write functions
   const { writeContract, data: txHash, isPending, reset: resetWrite, error: writeError } = useWriteContract();
@@ -319,6 +330,52 @@ export default function PlayPage() {
 
   return (
     <div className="min-h-screen bg-kawaii py-8 pt-20">
+      {/* Auto-reveal Toasts */}
+      <div className="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-sm">
+        {/* Revealing in progress */}
+        {revealingBets.size > 0 && (
+          <div className="glass rounded-xl p-3 flex items-center gap-3 shadow-lg animate-pulse">
+            <Dice5 className="w-5 h-5 text-accent animate-spin" />
+            <span className="text-sm text-foreground">
+              Revealing {revealingBets.size} pending bet{revealingBets.size > 1 ? "s" : ""}...
+            </span>
+          </div>
+        )}
+        
+        {/* Revealed results */}
+        {revealedBets.map((result) => (
+          <div 
+            key={result.betId}
+            className={clsx(
+              "rounded-xl p-3 flex items-center gap-3 shadow-lg",
+              result.won ? "bg-mint/90" : "bg-white/90"
+            )}
+          >
+            {result.won ? (
+              <Check className="w-5 h-5 text-mint-dark" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-foreground/50" />
+            )}
+            <div className="flex-1">
+              <p className={clsx("text-sm font-medium", result.won ? "text-mint-dark" : "text-foreground/70")}>
+                {result.won ? "You won!" : "Better luck next time"}
+              </p>
+              {result.won && result.payout > 0n && (
+                <p className="text-xs text-mint-dark">
+                  +{Number(formatEther(result.payout)).toLocaleString()} CLAW
+                </p>
+              )}
+            </div>
+            <button 
+              onClick={() => clearRevealed(result.betId)}
+              className="p-1 hover:bg-white/50 rounded"
+            >
+              <X className="w-4 h-4 text-foreground/50" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       <div className="max-w-2xl mx-auto px-4">
         <div className="flex justify-between items-center mb-6">
           <div>
