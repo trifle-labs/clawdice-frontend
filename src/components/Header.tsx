@@ -43,12 +43,7 @@ export function Header() {
             <NavLink href="/agents">Agents</NavLink>
             <NavLink href="/stats">Stats</NavLink>
             <NavLink href="/app/stake">Stake</NavLink>
-            <Link
-              href="/app/play"
-              className="px-4 py-1.5 bg-primary text-white rounded-full font-bold hover:bg-primary/90 transition-colors"
-            >
-              Play
-            </Link>
+            <NavLink href="/app/play">Play</NavLink>
             {isTestnet ? (
               <button
                 onClick={() => setSwapOpen(true)}
@@ -95,13 +90,7 @@ export function Header() {
             <NavLink href="/agents" onClick={() => setMenuOpen(false)}>Agents</NavLink>
             <NavLink href="/stats" onClick={() => setMenuOpen(false)}>Stats</NavLink>
             <NavLink href="/app/stake" onClick={() => setMenuOpen(false)}>Stake</NavLink>
-            <Link
-              href="/app/play"
-              onClick={() => setMenuOpen(false)}
-              className="px-4 py-2 bg-primary text-white rounded-full font-bold text-center hover:bg-primary/90 transition-colors"
-            >
-              Play
-            </Link>
+            <NavLink href="/app/play" onClick={() => setMenuOpen(false)}>Play</NavLink>
             {isTestnet ? (
               <button
                 onClick={() => { setSwapOpen(true); setMenuOpen(false); }}

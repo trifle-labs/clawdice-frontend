@@ -39,11 +39,11 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
             <Link
-              href="/app/play"
+              href="/agents"
               className="btn-accent rounded-full px-6 py-3 font-bold flex items-center justify-center gap-2"
             >
-              <Dice5 className="w-4 h-4" />
-              Play
+              <Bot className="w-4 h-4" />
+              Agent SDK
             </Link>
             <Link
               href="/app/stake"
@@ -53,18 +53,18 @@ export default function Home() {
               Stake
             </Link>
             <Link
+              href="/app/play"
+              className="glass hover:bg-white/80 text-foreground font-semibold px-6 py-3 rounded-full flex items-center justify-center gap-2"
+            >
+              <Dice5 className="w-4 h-4" />
+              Play
+            </Link>
+            <Link
               href="/stats"
               className="glass hover:bg-white/80 text-foreground font-semibold px-6 py-3 rounded-full flex items-center justify-center gap-2"
             >
               <Eye className="w-4 h-4" />
               Watch
-            </Link>
-            <Link
-              href="/agents"
-              className="glass hover:bg-white/80 text-foreground font-semibold px-6 py-3 rounded-full flex items-center justify-center gap-2"
-            >
-              <Bot className="w-4 h-4" />
-              Agent SDK
             </Link>
           </div>
         </div>
