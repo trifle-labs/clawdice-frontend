@@ -22,7 +22,7 @@ export default function Home() {
               alt="Clawdice"
               width={140}
               height={140}
-              className="drop-shadow-xl rounded-2xl"
+              className="drop-shadow-xl rounded-full"
               priority
             />
           </div>

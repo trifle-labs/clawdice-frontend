@@ -22,7 +22,7 @@ export function Header() {
               alt="Clawdice"
               width={32}
               height={32}
-              className="rounded-lg"
+              className="rounded-full"
             />
             <span className="text-lg font-display text-shimmer hidden sm:inline">
               Clawdice
