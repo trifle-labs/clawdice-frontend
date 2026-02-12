@@ -302,9 +302,18 @@ export default function PlayPage() {
   };
 
   const handleMax = () => {
-    if (userTokenBalance && maxBet) {
-      const maxAllowed = userTokenBalance < maxBet ? userTokenBalance : maxBet;
-      setAmount(formatEther(maxAllowed));
+    if (useETH) {
+      // For ETH, leave some for gas
+      if (ethBalance) {
+        const max = Math.max(0, Number(ethBalance.formatted) - 0.001);
+        setAmount(max.toFixed(6));
+      }
+    } else {
+      // For CLAW, use min of balance and maxBet
+      if (userTokenBalance && maxBet) {
+        const maxAllowed = userTokenBalance < maxBet ? userTokenBalance : maxBet;
+        setAmount(formatEther(maxAllowed));
+      }
     }
   };
 
@@ -474,17 +483,35 @@ export default function PlayPage() {
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                     <span className="text-foreground/50 text-sm">{useETH ? "ETH" : "CLAW"}</span>
-                    {!useETH && (
-                      <button
-                        onClick={handleMax}
-                        className="text-primary-dark hover:text-primary text-xs font-medium"
-                      >
-                        MAX
-                      </button>
-                    )}
+                    <button
+                      onClick={handleMax}
+                      className="text-primary-dark hover:text-primary text-xs font-medium"
+                    >
+                      MAX
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center justify-between mt-1">
+                {/* Amount Preset Buttons */}
+                <div className="flex gap-2 mt-2">
+                  {[10, 25, 50, 100].map((pct) => (
+                    <button
+                      key={pct}
+                      onClick={() => {
+                        const balance = useETH 
+                          ? (ethBalance ? Number(ethBalance.formatted) : 0)
+                          : (userTokenBalance ? Number(formatEther(userTokenBalance)) : 0);
+                        const val = (balance * pct / 100);
+                        // Leave some ETH for gas
+                        const adjusted = useETH && pct === 100 ? Math.max(0, val - 0.001) : val;
+                        setAmount(adjusted > 0 ? adjusted.toFixed(useETH ? 6 : 2) : "0");
+                      }}
+                      className="flex-1 py-1.5 text-xs font-medium glass rounded-lg hover:bg-white/80 transition-colors"
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between mt-2">
                   <p className="text-xs text-foreground/50">
                     Balance: {useETH 
                       ? `${ethBalance ? Number(ethBalance.formatted).toFixed(4) : "0"} ETH`
