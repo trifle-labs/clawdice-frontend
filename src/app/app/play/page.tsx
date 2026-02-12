@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance } from "wagmi";
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance, useChainId, useSwitchChain } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatEther, parseEther, decodeEventLog } from "viem";
 import { Dice5, Volume2, VolumeX, Info, Clock, Zap, Coins } from "lucide-react";
@@ -18,6 +18,9 @@ export default function PlayPage() {
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
   const { sponsoredClaim } = useSponsoredClaim();
+  const chainId = useChainId();
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
+  const isWrongNetwork = isConnected && chainId !== 84532; // Base Sepolia
   const [mounted, setMounted] = useState(false);
   const [amount, setAmount] = useState("");
   const [odds, setOdds] = useState(50);
@@ -415,8 +418,21 @@ export default function PlayPage() {
             </div>
           ) : !isConnected ? (
             <div className="text-center py-6">
-              <p className="text-foreground/60 mb-3 text-sm">Connect wallet to play</p>
+              <p className="text-foreground/60 mb-2 text-sm">Connect wallet to play</p>
+              <p className="text-foreground/40 mb-4 text-xs">Requires Base Sepolia testnet</p>
               <ConnectKitButton />
+            </div>
+          ) : isWrongNetwork ? (
+            <div className="text-center py-6">
+              <p className="text-foreground/60 mb-2 text-sm">Wrong network detected</p>
+              <p className="text-foreground/40 mb-4 text-xs">Please switch to Base Sepolia</p>
+              <button
+                onClick={() => switchChain?.({ chainId: 84532 })}
+                disabled={isSwitching}
+                className="px-6 py-3 bg-red-500 text-white rounded-full font-bold hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {isSwitching ? "Switching..." : "Switch to Base Sepolia"}
+              </button>
             </div>
           ) : betState === "idle" ? (
             <>
