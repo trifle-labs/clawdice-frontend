@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount, useBalance, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import { parseEther, formatEther } from "viem";
 import { baseSepolia, base } from "wagmi/chains";
 import { CONTRACTS, CLAWDICE_ABI } from "@/lib/contracts";
@@ -28,11 +29,21 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
     chainId: baseSepolia.id,
   });
 
+  const queryClient = useQueryClient();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // Invalidate all balance queries when swap succeeds
+  useEffect(() => {
+    if (isSuccess) {
+      // Invalidate all read contract queries to refresh balances everywhere
+      queryClient.invalidateQueries({ queryKey: ["readContract"] });
+      queryClient.invalidateQueries({ queryKey: ["balance"] });
+    }
+  }, [isSuccess, queryClient]);
 
   // Rough estimate: 1 ETH ≈ 1 CLAW (adjust based on actual pool ratio)
   const estimatedClaw = ethAmount ? parseFloat(ethAmount) : 0;
