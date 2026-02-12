@@ -4,19 +4,41 @@ import Link from "next/link";
 import Image from "next/image";
 import { ConnectKitButton } from "connectkit";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
-import { useChainId } from "wagmi";
+import { Menu, X, Coins } from "lucide-react";
+import { useChainId, useAccount, useReadContract } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
+import { formatEther } from "viem";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { DEFAULT_NETWORK } from "@/lib/networks";
 import { SwapModal } from "./SwapModal";
 import { CurrencyToggle } from "@/contexts/PriceContext";
+import { CONTRACTS, ERC20_ABI } from "@/lib/contracts";
 
 export function Header() {
   const [currentNetwork, setCurrentNetwork] = useState(DEFAULT_NETWORK);
   const [menuOpen, setMenuOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   const chainId = useChainId();
+  const { address, isConnected } = useAccount();
+  
+  // Fetch CLAW balance
+  const { data: clawBalance } = useReadContract({
+    address: CONTRACTS.baseSepolia.clawToken,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
+  });
+  
+  // Format balance for display
+  const formatBalance = (balance: bigint | undefined) => {
+    if (!balance) return "0";
+    const num = Number(formatEther(balance));
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    if (num >= 1) return num.toFixed(1);
+    return num.toFixed(4);
+  };
   
   // Show in-app swap on testnet, Uniswap link on mainnet
   const isTestnet = chainId === baseSepolia.id;
@@ -69,6 +91,14 @@ export function Header() {
               currentNetwork={currentNetwork}
               onNetworkChange={setCurrentNetwork}
             />
+            {/* CLAW Balance */}
+            {isConnected && clawBalance !== undefined && (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 glass rounded-full text-sm font-medium">
+                <Coins className="w-4 h-4 text-primary" />
+                <span>{formatBalance(clawBalance)}</span>
+                <span className="text-foreground/50">CLAW</span>
+              </div>
+            )}
             <div className="hidden sm:block">
               <ConnectKitButton />
             </div>
@@ -110,7 +140,15 @@ export function Header() {
               </a>
             )}
           </nav>
-          <div className="mt-4">
+          {/* Mobile CLAW Balance */}
+          {isConnected && clawBalance !== undefined && (
+            <div className="flex items-center gap-1.5 px-3 py-2 glass rounded-full text-sm font-medium w-fit mb-3">
+              <Coins className="w-4 h-4 text-primary" />
+              <span>{formatBalance(clawBalance)}</span>
+              <span className="text-foreground/50">CLAW</span>
+            </div>
+          )}
+          <div>
             <ConnectKitButton />
           </div>
         </div>
