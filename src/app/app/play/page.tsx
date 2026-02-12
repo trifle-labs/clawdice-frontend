@@ -24,6 +24,7 @@ export default function PlayPage() {
   const [currentBetId, setCurrentBetId] = useState<bigint | null>(null);
   const [useETH, setUseETH] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -60,8 +61,8 @@ export default function PlayPage() {
   });
 
   // Write functions
-  const { writeContract, data: txHash, isPending, reset: resetWrite } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({ hash: txHash });
+  const { writeContract, data: txHash, isPending, reset: resetWrite, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, data: receipt, error: txError } = useWaitForTransactionReceipt({ hash: txHash });
 
   // Calculate payout
   const multiplier = 100 / odds;
@@ -105,6 +106,25 @@ export default function PlayPage() {
     }
     return null;
   }, []);
+
+  // Handle transaction errors - reset state
+  useEffect(() => {
+    if (writeError || txError) {
+      console.error("Transaction error:", writeError || txError);
+      const err = writeError || txError;
+      const msg = err?.message?.includes("user rejected") 
+        ? "Transaction cancelled" 
+        : err?.message?.includes("insufficient") 
+        ? "Insufficient balance"
+        : "Transaction failed";
+      setErrorMsg(msg);
+      setBetState("idle");
+      setIsRolling(false);
+      resetWrite();
+      // Clear error after 5 seconds
+      setTimeout(() => setErrorMsg(null), 5000);
+    }
+  }, [writeError, txError, resetWrite]);
 
   // Handle transaction success
   useEffect(() => {
@@ -282,6 +302,13 @@ export default function PlayPage() {
               >
                 Play Again
               </button>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {errorMsg && (
+            <div className="text-center mb-4 p-3 bg-red-100 border border-red-300 rounded-xl">
+              <p className="text-sm text-red-600 font-medium">{errorMsg}</p>
             </div>
           )}
 
