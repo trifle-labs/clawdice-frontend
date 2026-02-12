@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ConnectKitButton } from "connectkit";
-import { Dice5, Bot } from "lucide-react";
+import { Bot } from "lucide-react";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { useState } from "react";
 import { DEFAULT_NETWORK } from "@/lib/networks";
@@ -11,12 +12,18 @@ export function Header() {
   const [currentNetwork, setCurrentNetwork] = useState(DEFAULT_NETWORK);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass">
+    <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-primary/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2">
-            <Dice5 className="w-8 h-8 text-primary" />
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">
+            <Image
+              src="/logo.png"
+              alt="Clawdice"
+              width={40}
+              height={40}
+              className="rounded-full"
+            />
+            <span className="text-xl font-display text-shimmer">
               Clawdice
             </span>
           </Link>
@@ -24,26 +31,26 @@ export function Header() {
           <nav className="hidden md:flex items-center gap-6">
             <Link
               href="/agents"
-              className="text-accent hover:text-accent-light transition-colors flex items-center gap-1"
+              className="text-accent-dark hover:text-accent transition-colors flex items-center gap-1 font-semibold"
             >
               <Bot className="w-4 h-4" />
               For Agents
             </Link>
             <Link
               href="/stats"
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-foreground/70 hover:text-foreground transition-colors font-medium"
             >
               Stats
             </Link>
             <Link
               href="/app/stake"
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-foreground/70 hover:text-foreground transition-colors font-medium"
             >
               Stake
             </Link>
             <Link
               href="/app/play"
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-foreground/70 hover:text-foreground transition-colors font-medium"
             >
               Play
             </Link>
@@ -51,7 +58,7 @@ export function Header() {
               href="https://github.com/trifle-labs/clawdice"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-foreground/70 hover:text-foreground transition-colors font-medium"
             >
               GitHub
             </a>

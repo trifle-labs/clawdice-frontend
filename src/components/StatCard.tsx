@@ -8,19 +8,19 @@ interface StatCardProps {
 
 export function StatCard({ label, value, subValue, icon, trend }: StatCardProps) {
   return (
-    <div className="glass rounded-xl p-6 hover:glow-primary transition-shadow">
+    <div className="card-kawaii p-6 hover:scale-105 transition-all">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-gray-400 text-sm mb-1">{label}</p>
-          <p className="text-2xl md:text-3xl font-bold">{value}</p>
+          <p className="text-foreground/50 text-sm mb-1 font-medium">{label}</p>
+          <p className="text-2xl md:text-3xl font-bold text-foreground">{value}</p>
           {subValue && (
             <p
-              className={`text-sm mt-1 ${
+              className={`text-sm mt-1 font-medium ${
                 trend === "up"
-                  ? "text-success"
+                  ? "text-mint-dark"
                   : trend === "down"
-                  ? "text-danger"
-                  : "text-gray-400"
+                  ? "text-claw"
+                  : "text-foreground/50"
               }`}
             >
               {trend === "up" && "↑ "}
@@ -29,7 +29,7 @@ export function StatCard({ label, value, subValue, icon, trend }: StatCardProps)
             </p>
           )}
         </div>
-        {icon && <div className="text-primary opacity-50">{icon}</div>}
+        {icon && <div className="text-primary/60">{icon}</div>}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Dice5 } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useRecentBets, formatBetForDisplay } from "@/hooks/useIndexer";
 
 interface DisplayBet {
@@ -18,35 +18,35 @@ function BetCard({ bet }: { bet: DisplayBet }) {
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-2 rounded-lg whitespace-nowrap ${
+      className={`flex items-center gap-3 px-4 py-2 rounded-full whitespace-nowrap shadow-md ${
         isWon
-          ? "bg-success/10 border border-success/30"
+          ? "bg-mint/30 border-2 border-mint"
           : isLost
-          ? "bg-danger/10 border border-danger/30"
-          : "bg-primary/10 border border-primary/30"
+          ? "bg-claw/10 border-2 border-claw/30"
+          : "bg-accent/20 border-2 border-accent/40"
       }`}
     >
-      <Dice5
+      <Sparkles
         className={`w-4 h-4 ${
-          isWon ? "text-success" : isLost ? "text-danger" : "text-primary"
+          isWon ? "text-mint-dark" : isLost ? "text-claw" : "text-accent-dark"
         }`}
       />
-      <span className="text-gray-400 font-mono text-sm">{bet.player}</span>
-      <span className="text-white">bet</span>
-      <span className="font-bold text-accent">{bet.amount} CLAW</span>
-      <span className="text-gray-400">@</span>
-      <span className="text-primary">{bet.odds}</span>
-      <span className="text-gray-400">→</span>
+      <span className="text-foreground/60 font-mono text-sm">{bet.player}</span>
+      <span className="text-foreground/80">bet</span>
+      <span className="font-bold text-primary-dark">{bet.amount} CLAW</span>
+      <span className="text-foreground/50">@</span>
+      <span className="text-accent-dark font-semibold">{bet.odds}</span>
+      <span className="text-foreground/50">→</span>
       <span
         className={`font-bold ${
-          isWon ? "text-success" : isLost ? "text-danger" : "text-gray-400"
+          isWon ? "text-mint-dark" : isLost ? "text-claw" : "text-foreground/50"
         }`}
       >
         {isWon
-          ? `WON ${bet.payout} CLAW`
+          ? `WON ${bet.payout} CLAW ✨`
           : isLost
           ? "LOST"
-          : "PENDING"}
+          : "PENDING..."}
       </span>
     </div>
   );
@@ -60,16 +60,17 @@ export function LiveTicker() {
   // Show placeholder if loading or no data
   if (isLoading || displayBets.length === 0) {
     return (
-      <div className="w-full overflow-hidden bg-background/50 border-y border-primary/20 py-3">
-        <div className="flex items-center justify-center text-gray-500">
-          {isLoading ? "Loading live bets..." : "No bets yet. Be the first!"}
+      <div className="w-full overflow-hidden bg-white/50 backdrop-blur-sm border-y border-primary/20 py-4">
+        <div className="flex items-center justify-center text-foreground/50 gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          {isLoading ? "Loading live bets..." : "No bets yet. Be the first! ✨"}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full overflow-hidden bg-background/50 border-y border-primary/20 py-3">
+    <div className="w-full overflow-hidden bg-white/50 backdrop-blur-sm border-y border-primary/20 py-4">
       <div className="flex gap-4 animate-slide-left">
         {[...displayBets, ...displayBets].map((bet, i) => (
           <BetCard key={`${bet.id}-${i}`} bet={bet} />
