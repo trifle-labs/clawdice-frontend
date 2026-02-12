@@ -3,8 +3,8 @@ import { Address } from "viem";
 export const CONTRACTS = {
   baseSepolia: {
     clawToken: "0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c" as Address,
-    clawdiceVault: "0x962A995CF074019E8C9147FA2e58e567482904D8" as Address,
-    clawdice: "0xa0e221892D4eEF6448d1922852DDD76b1a412970" as Address,
+    clawdiceVault: "0x7406e3b5a1158aac919615cc7d5c2fc5b14dfc82" as Address,
+    clawdice: "0xaef753fb788c57201bb36b9b4759c50bc70dd775" as Address,
   },
 } as const;
 
