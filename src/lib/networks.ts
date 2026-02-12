@@ -1,5 +1,6 @@
 import { baseSepolia, base } from "wagmi/chains";
 import { Address } from "viem";
+import { CONTRACTS } from "./contracts";
 
 export interface NetworkConfig {
   chain: typeof base | typeof baseSepolia;
@@ -18,11 +19,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     chain: baseSepolia,
     name: "Base Sepolia",
     isLive: true,
-    contracts: {
-      clawToken: "0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c",
-      clawdiceVault: "0x42Ba5FC8870860fcE4C81931FD282118616cE480",
-      clawdice: "0x3971dFAEa81B4C57c195Ae36510ec110375c0F71",
-    },
+    contracts: CONTRACTS.baseSepolia,
     indexerChainId: 84532,
   },
   base: {
@@ -30,9 +27,9 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     name: "Base",
     isLive: false, // Not deployed yet
     contracts: {
-      clawToken: "0x0000000000000000000000000000000000000000",
-      clawdiceVault: "0x0000000000000000000000000000000000000000",
-      clawdice: "0x0000000000000000000000000000000000000000",
+      clawToken: "0x0000000000000000000000000000000000000000" as Address,
+      clawdiceVault: "0x0000000000000000000000000000000000000000" as Address,
+      clawdice: "0x0000000000000000000000000000000000000000" as Address,
     },
     indexerChainId: 8453,
   },
