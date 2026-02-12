@@ -80,7 +80,7 @@ export default function Home() {
           <div className="flex justify-center mb-8">
             <div className="relative animate-float">
               <Image
-                src="/logo.png"
+                src="/logo.jpg"
                 alt="Clawdice"
                 width={200}
                 height={200}
