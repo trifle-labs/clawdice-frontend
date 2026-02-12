@@ -185,14 +185,16 @@ export default function PlayPage() {
   }, [amount, allowance, useETH]);
 
   const handleApprove = async () => {
-    if (!address || !amount) return;
+    if (!address) return;
     setBetState("approving");
 
+    // Approve unlimited so user only needs to do this once
+    const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
     writeContract({
       address: CONTRACTS.baseSepolia.clawToken,
       abi: ERC20_ABI,
       functionName: "approve",
-      args: [CONTRACTS.baseSepolia.clawdice, parseEther(amount)],
+      args: [CONTRACTS.baseSepolia.clawdice, MAX_UINT256],
     });
   };
 
