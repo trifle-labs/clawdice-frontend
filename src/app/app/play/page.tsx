@@ -202,13 +202,14 @@ export default function PlayPage() {
     setBetState("placing");
 
     if (useETH) {
-      // Place bet with ETH (atomic swap)
+      // Place bet with ETH (atomic swap) - needs higher gas for Uniswap V4 swap
       writeContract({
         address: CONTRACTS.baseSepolia.clawdice,
         abi: CLAWDICE_ABI,
         functionName: "placeBetWithETH",
         args: [BigInt(odds) * BigInt(10 ** 16), BigInt(0)], // 0 minTokensOut for simplicity
         value: parseEther(amount),
+        gas: BigInt(500_000), // Fixed gas limit - swap + bet is gas-heavy
       });
     } else {
       // Place bet with CLAW
