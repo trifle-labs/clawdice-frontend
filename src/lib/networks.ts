@@ -20,8 +20,8 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     isLive: true,
     contracts: {
       clawToken: "0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c",
-      clawdiceVault: "0x4436Dd17FC83ec955f6659061cB02d8f081B33BB",
-      clawdice: "0x352dCE89414D5Cd08e19a48468BCDd96b7C39336",
+      clawdiceVault: "0x42Ba5FC8870860fcE4C81931FD282118616cE480",
+      clawdice: "0x3971dFAEa81B4C57c195Ae36510ec110375c0F71",
     },
     indexerChainId: 84532,
   },
