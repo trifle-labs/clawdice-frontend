@@ -77,20 +77,34 @@ export function formatBetForDisplay(bet: BetEvent): {
   id: string;
   player: string;
   amount: string;
+  amountRaw: number;
   odds: string;
-  result: "pending" | "won" | "lost";
+  result: "pending" | "won" | "lost" | "expired";
   payout: string;
+  payoutRaw: number;
 } {
   const amountNum = Number(bet.amount) / 1e18;
   const payoutNum = bet.payout ? Number(bet.payout) / 1e18 : 0;
+
+  // Determine result: expired takes priority over pending
+  let result: "pending" | "won" | "lost" | "expired";
+  if (bet.expired) {
+    result = "expired";
+  } else if (bet.won === undefined) {
+    result = "pending";
+  } else {
+    result = bet.won ? "won" : "lost";
+  }
 
   return {
     id: bet.betId,
     player: `${bet.player.slice(0, 6)}...${bet.player.slice(-4)}`,
     amount: amountNum >= 1000 ? `${(amountNum / 1000).toFixed(1)}K` : amountNum.toFixed(0),
+    amountRaw: amountNum,
     odds: `${bet.odds}%`,
-    result: bet.won === undefined ? "pending" : bet.won ? "won" : "lost",
+    result,
     payout: payoutNum >= 1000 ? `${(payoutNum / 1000).toFixed(1)}K` : payoutNum.toFixed(0),
+    payoutRaw: payoutNum,
   };
 }
 

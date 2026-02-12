@@ -8,6 +8,7 @@ import { Menu, X } from "lucide-react";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { DEFAULT_NETWORK } from "@/lib/networks";
 import { SwapModal } from "./SwapModal";
+import { CurrencyToggle } from "@/contexts/PriceContext";
 
 export function Header() {
   const [currentNetwork, setCurrentNetwork] = useState(DEFAULT_NETWORK);
@@ -60,6 +61,7 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
+            <CurrencyToggle />
             <NetworkSwitcher
               currentNetwork={currentNetwork}
               onNetworkChange={setCurrentNetwork}

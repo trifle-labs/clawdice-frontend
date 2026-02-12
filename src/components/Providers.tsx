@@ -5,6 +5,7 @@ import { WagmiProvider } from "wagmi";
 import { ConnectKitProvider } from "connectkit";
 import { config } from "@/lib/wagmi";
 import { useState } from "react";
+import { PriceProvider } from "@/contexts/PriceContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -22,7 +23,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
             "--ck-border-radius": "16px",
           }}
         >
-          {children}
+          <PriceProvider>
+            {children}
+          </PriceProvider>
         </ConnectKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

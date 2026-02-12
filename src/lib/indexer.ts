@@ -4,6 +4,32 @@
 
 import { query, queryLive } from "@indexsupply/indexsupply.js";
 import { getActiveNetwork } from "./networks";
+import { createPublicClient, http } from "viem";
+import { baseSepolia } from "viem/chains";
+
+// Bets expire after 256 blocks (blockhash lookback limit)
+const EXPIRY_BLOCKS = 256;
+
+// Create a client to fetch current block
+const publicClient = createPublicClient({
+  chain: baseSepolia,
+  transport: http(),
+});
+
+// Cache current block with 10s TTL
+let cachedBlockNumber: bigint | null = null;
+let blockCacheTime = 0;
+const BLOCK_CACHE_TTL = 10000; // 10 seconds
+
+async function getCurrentBlock(): Promise<bigint> {
+  const now = Date.now();
+  if (cachedBlockNumber && now - blockCacheTime < BLOCK_CACHE_TTL) {
+    return cachedBlockNumber;
+  }
+  cachedBlockNumber = await publicClient.getBlockNumber();
+  blockCacheTime = now;
+  return cachedBlockNumber;
+}
 
 // Get addresses from central config
 const network = getActiveNetwork();
@@ -32,6 +58,7 @@ export interface BetEvent {
   payout?: bigint;
   blockNumber: number;
   timestamp?: number;
+  expired?: boolean; // true if bet expired without being claimed
 }
 
 export interface VaultEvent {
@@ -54,8 +81,8 @@ export async function getRecentBets(
   limit = 50,
   apiKey?: string
 ): Promise<BetEvent[]> {
-  // Fetch bets and resolutions separately (JOINs timeout on Index Supply)
-  const [betsResult, resolvedResult] = await Promise.all([
+  // Fetch bets, resolutions, and current block in parallel
+  const [betsResult, resolvedResult, currentBlock] = await Promise.all([
     query({
       chainId: BASE_SEPOLIA_CHAIN,
       apiKey,
@@ -78,6 +105,7 @@ export async function getRecentBets(
         WHERE address = '${CLAWDICE_ADDRESS}'
       `,
     }),
+    getCurrentBlock(),
   ]);
 
   // Build resolution lookup map (columns come back lowercase)
@@ -93,14 +121,20 @@ export async function getRecentBets(
   return betsResult.rows.map((row: Record<string, unknown>) => {
     const betId = String(row.betid);
     const resolution = resolvedMap.get(betId);
+    const betBlockNumber = Number(row.block_num);
+    
+    // Check if bet is expired (no resolution and older than 256 blocks)
+    const isExpired = !resolution && Number(currentBlock) > betBlockNumber + EXPIRY_BLOCKS;
+    
     return {
       betId,
       player: String(row.player),
       amount: BigInt(row.amount as string),
       odds: Number(BigInt(row.targetoddse18 as string) / BigInt(10 ** 16)),
-      blockNumber: Number(row.block_num),
+      blockNumber: betBlockNumber,
       won: resolution?.won,
       payout: resolution?.payout,
+      expired: isExpired,
     };
   });
 }
@@ -110,9 +144,9 @@ export async function getBetsByPlayer(
   limit = 50,
   apiKey?: string
 ): Promise<BetEvent[]> {
-  // Fetch bets and resolutions separately (JOINs timeout on Index Supply)
+  // Fetch bets, resolutions, and current block in parallel
   // Note: BetResolved doesn't have player field, so we fetch all and filter
-  const [betsResult, resolvedResult] = await Promise.all([
+  const [betsResult, resolvedResult, currentBlock] = await Promise.all([
     query({
       chainId: BASE_SEPOLIA_CHAIN,
       apiKey,
@@ -136,6 +170,7 @@ export async function getBetsByPlayer(
         WHERE address = '${CLAWDICE_ADDRESS}'
       `,
     }),
+    getCurrentBlock(),
   ]);
 
   // Build resolution lookup map (columns come back lowercase)
@@ -151,14 +186,20 @@ export async function getBetsByPlayer(
   return betsResult.rows.map((row: Record<string, unknown>) => {
     const betId = String(row.betid);
     const resolution = resolvedMap.get(betId);
+    const betBlockNumber = Number(row.block_num);
+    
+    // Check if bet is expired (no resolution and older than 256 blocks)
+    const isExpired = !resolution && Number(currentBlock) > betBlockNumber + EXPIRY_BLOCKS;
+    
     return {
       betId,
       player: String(row.player),
       amount: BigInt(row.amount as string),
       odds: Number(BigInt(row.targetoddse18 as string) / BigInt(10 ** 16)),
-      blockNumber: Number(row.block_num),
+      blockNumber: betBlockNumber,
       won: resolution?.won,
       payout: resolution?.payout,
+      expired: isExpired,
     };
   });
 }

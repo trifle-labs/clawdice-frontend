@@ -5,11 +5,12 @@ import { StatCard } from "@/components/StatCard";
 import { useState } from "react";
 import { useRecentBets, useStats, formatBetForDisplay, formatStatsForDisplay } from "@/hooks/useIndexer";
 import { useReadContract } from "wagmi";
-import { formatEther } from "viem";
 import { CONTRACTS, VAULT_ABI } from "@/lib/contracts";
+import { usePrice } from "@/contexts/PriceContext";
 
 export default function StatsPage() {
-  const [filter, setFilter] = useState<"all" | "wins" | "losses">("all");
+  const [filter, setFilter] = useState<"all" | "wins" | "losses" | "expired">("all");
+  const { formatValue } = usePrice();
 
   // Fetch from indexer
   const { data: bets, isLoading: betsLoading } = useRecentBets(50);
@@ -27,16 +28,14 @@ export default function StatsPage() {
 
   const filteredBets = displayBets.filter((bet) => {
     if (filter === "wins") return bet.result === "won";
-    if (filter === "losses") return bet.result === "lost";
+    if (filter === "losses") return bet.result === "lost" || bet.result === "expired";
+    if (filter === "expired") return bet.result === "expired";
     return true;
   });
 
   const formatTVL = (tvl: bigint | undefined) => {
     if (!tvl) return "...";
-    const num = Number(formatEther(tvl));
-    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M CLAW`;
-    if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K CLAW`;
-    return `${num.toFixed(0)} CLAW`;
+    return formatValue(tvl);
   };
 
   return (
@@ -48,7 +47,7 @@ export default function StatsPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <StatCard
             label="Total Volume"
-            value={statsLoading ? "..." : displayStats?.totalVolume || "0 CLAW"}
+            value={statsLoading ? "..." : stats ? formatValue(stats.totalVolume) : "0"}
             icon={<Coins className="w-6 h-6" />}
           />
           <StatCard
@@ -63,7 +62,7 @@ export default function StatsPage() {
           />
           <StatCard
             label="House Profit"
-            value={statsLoading ? "..." : displayStats?.houseProfit || "0 CLAW"}
+            value={statsLoading ? "..." : stats ? formatValue(stats.houseProfit) : "0"}
             trend="up"
             icon={<TrendingUp className="w-6 h-6" />}
           />
@@ -100,8 +99,8 @@ export default function StatsPage() {
         <div className="glass rounded-xl p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h3 className="text-lg font-semibold">Recent Activity</h3>
-            <div className="flex gap-2">
-              {(["all", "wins", "losses"] as const).map((f) => (
+            <div className="flex gap-2 flex-wrap">
+              {(["all", "wins", "losses", "expired"] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
@@ -145,7 +144,7 @@ export default function StatsPage() {
                       </td>
                       <td className="py-3 font-mono text-sm">{bet.player}</td>
                       <td className="py-3 text-accent font-medium">
-                        {bet.amount} CLAW
+                        {formatValue(bet.amountRaw)}
                       </td>
                       <td className="py-3 text-primary">{bet.odds}</td>
                       <td className="py-3">
@@ -153,7 +152,7 @@ export default function StatsPage() {
                           className={`px-2 py-1 rounded text-sm font-medium ${
                             bet.result === "won"
                               ? "bg-success/20 text-success"
-                              : bet.result === "lost"
+                              : bet.result === "lost" || bet.result === "expired"
                               ? "bg-danger/20 text-danger"
                               : "bg-primary/20 text-primary"
                           }`}
@@ -163,7 +162,7 @@ export default function StatsPage() {
                       </td>
                       <td className="py-3 font-medium">
                         {bet.result === "won" ? (
-                          <span className="text-success">+{bet.payout} CLAW</span>
+                          <span className="text-success">+{formatValue(bet.payoutRaw)}</span>
                         ) : (
                           <span className="text-gray-500">-</span>
                         )}
