@@ -13,6 +13,7 @@ type BetState = "idle" | "approving" | "placing" | "waiting" | "claiming" | "won
 export default function PlayPage() {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
+  const [mounted, setMounted] = useState(false);
   const [amount, setAmount] = useState("");
   const [odds, setOdds] = useState(50);
   const [betState, setBetState] = useState<BetState>("idle");
@@ -21,6 +22,11 @@ export default function PlayPage() {
   const [lastResult, setLastResult] = useState<{ won: boolean; payout: bigint } | null>(null);
   const [currentBetId, setCurrentBetId] = useState<bigint | null>(null);
   const [useETH, setUseETH] = useState(false);
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Read user token balance
   const { data: userTokenBalance, refetch: refetchBalance } = useReadContract({
@@ -299,7 +305,11 @@ export default function PlayPage() {
           )}
 
           {/* Bet Controls */}
-          {!isConnected ? (
+          {!mounted ? (
+            <div className="text-center py-6">
+              <p className="text-foreground/60 text-sm">Loading...</p>
+            </div>
+          ) : !isConnected ? (
             <div className="text-center py-6">
               <p className="text-foreground/60 mb-3 text-sm">Connect wallet to play</p>
               <ConnectKitButton />
