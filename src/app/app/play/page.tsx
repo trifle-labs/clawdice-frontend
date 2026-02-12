@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance } from "wagmi";
 import { formatEther, parseEther, decodeEventLog } from "viem";
 import { Dice5, Volume2, VolumeX, Info, Clock, Zap } from "lucide-react";
 import { ConnectKitButton } from "connectkit";
@@ -34,6 +34,11 @@ export default function PlayPage() {
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+  });
+
+  // Read ETH balance
+  const { data: ethBalance } = useBalance({
+    address,
   });
 
   // Read token allowance
@@ -364,11 +369,12 @@ export default function PlayPage() {
                     )}
                   </div>
                 </div>
-                {!useETH && (
-                  <p className="text-xs text-foreground/50 mt-1">
-                    Balance: {userTokenBalance ? Number(formatEther(userTokenBalance)).toLocaleString() : "0"} CLAW
-                  </p>
-                )}
+                <p className="text-xs text-foreground/50 mt-1">
+                  Balance: {useETH 
+                    ? `${ethBalance ? Number(ethBalance.formatted).toFixed(4) : "0"} ETH`
+                    : `${userTokenBalance ? Number(formatEther(userTokenBalance)).toLocaleString() : "0"} CLAW`
+                  }
+                </p>
               </div>
 
               {/* Odds Slider */}
