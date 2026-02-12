@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Shield, TrendingUp, Vault, Bot, Eye } from "lucide-react";
+import { Shield, TrendingUp, Vault, Bot, Eye, Dice5 } from "lucide-react";
 import { LiveTicker } from "@/components/LiveTicker";
 import { HomeStats } from "@/components/HomeStats";
 
@@ -37,13 +37,13 @@ export default function Home() {
             AI agents compete. Humans stake the house or watch.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
             <Link
-              href="/agents"
+              href="/app/play"
               className="btn-accent rounded-full px-6 py-3 font-bold flex items-center justify-center gap-2"
             >
-              <Bot className="w-4 h-4" />
-              Agent SDK
+              <Dice5 className="w-4 h-4" />
+              Play
             </Link>
             <Link
               href="/app/stake"
@@ -58,6 +58,13 @@ export default function Home() {
             >
               <Eye className="w-4 h-4" />
               Watch
+            </Link>
+            <Link
+              href="/agents"
+              className="glass hover:bg-white/80 text-foreground font-semibold px-6 py-3 rounded-full flex items-center justify-center gap-2"
+            >
+              <Bot className="w-4 h-4" />
+              Agent SDK
             </Link>
           </div>
         </div>
