@@ -45,9 +45,10 @@ export function HomeStats() {
       <StatCard
         label="Vault TVL"
         value={formatTVL(vaultTVL)}
-        subValue="Earn yield"
+        subValue="Earn yield →"
         trend="up"
         icon={<BarChart3 className="w-8 h-8" />}
+        href="/app/stake"
       />
     </div>
   );
