@@ -5,6 +5,8 @@ import Image from "next/image";
 import { ConnectKitButton } from "connectkit";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { useChainId } from "wagmi";
+import { baseSepolia } from "wagmi/chains";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { DEFAULT_NETWORK } from "@/lib/networks";
 import { SwapModal } from "./SwapModal";
@@ -14,9 +16,10 @@ export function Header() {
   const [currentNetwork, setCurrentNetwork] = useState(DEFAULT_NETWORK);
   const [menuOpen, setMenuOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
+  const chainId = useChainId();
   
   // Show in-app swap on testnet, Uniswap link on mainnet
-  const isTestnet = currentNetwork === "base-sepolia";
+  const isTestnet = chainId === baseSepolia.id;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-primary/20">
@@ -40,7 +43,12 @@ export function Header() {
             <NavLink href="/agents">Agents</NavLink>
             <NavLink href="/stats">Stats</NavLink>
             <NavLink href="/app/stake">Stake</NavLink>
-            <NavLink href="/app/play">Play</NavLink>
+            <Link
+              href="/app/play"
+              className="px-4 py-1.5 bg-primary text-white rounded-full font-bold hover:bg-primary/90 transition-colors"
+            >
+              Play
+            </Link>
             {isTestnet ? (
               <button
                 onClick={() => setSwapOpen(true)}
@@ -87,7 +95,13 @@ export function Header() {
             <NavLink href="/agents" onClick={() => setMenuOpen(false)}>Agents</NavLink>
             <NavLink href="/stats" onClick={() => setMenuOpen(false)}>Stats</NavLink>
             <NavLink href="/app/stake" onClick={() => setMenuOpen(false)}>Stake</NavLink>
-            <NavLink href="/app/play" onClick={() => setMenuOpen(false)}>Play</NavLink>
+            <Link
+              href="/app/play"
+              onClick={() => setMenuOpen(false)}
+              className="px-4 py-2 bg-primary text-white rounded-full font-bold text-center hover:bg-primary/90 transition-colors"
+            >
+              Play
+            </Link>
             {isTestnet ? (
               <button
                 onClick={() => { setSwapOpen(true); setMenuOpen(false); }}

@@ -9,7 +9,7 @@ import { CONTRACTS, VAULT_ABI } from "@/lib/contracts";
 import { usePrice } from "@/contexts/PriceContext";
 
 export default function StatsPage() {
-  const [filter, setFilter] = useState<"all" | "wins" | "losses" | "expired">("all");
+  const [filter, setFilter] = useState<"all" | "wins" | "losses">("all");
   const { formatValue } = usePrice();
 
   // Fetch from indexer
@@ -28,8 +28,7 @@ export default function StatsPage() {
 
   const filteredBets = displayBets.filter((bet) => {
     if (filter === "wins") return bet.result === "won";
-    if (filter === "losses") return bet.result === "lost" || bet.result === "expired";
-    if (filter === "expired") return bet.result === "expired";
+    if (filter === "losses") return bet.result === "lost";
     return true;
   });
 
@@ -100,7 +99,7 @@ export default function StatsPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h3 className="text-lg font-semibold">Recent Activity</h3>
             <div className="flex gap-2 flex-wrap">
-              {(["all", "wins", "losses", "expired"] as const).map((f) => (
+              {(["all", "wins", "losses"] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
@@ -152,7 +151,7 @@ export default function StatsPage() {
                           className={`px-2 py-1 rounded text-sm font-medium ${
                             bet.result === "won"
                               ? "bg-success/20 text-success"
-                              : bet.result === "lost" || bet.result === "expired"
+                              : bet.result === "lost"
                               ? "bg-danger/20 text-danger"
                               : "bg-primary/20 text-primary"
                           }`}

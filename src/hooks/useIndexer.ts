@@ -79,17 +79,17 @@ export function formatBetForDisplay(bet: BetEvent): {
   amount: string;
   amountRaw: number;
   odds: string;
-  result: "pending" | "won" | "lost" | "expired";
+  result: "pending" | "won" | "lost";
   payout: string;
   payoutRaw: number;
 } {
   const amountNum = Number(bet.amount) / 1e18;
   const payoutNum = bet.payout ? Number(bet.payout) / 1e18 : 0;
 
-  // Determine result: expired takes priority over pending
-  let result: "pending" | "won" | "lost" | "expired";
+  // Determine result: expired counts as lost
+  let result: "pending" | "won" | "lost";
   if (bet.expired) {
-    result = "expired";
+    result = "lost"; // expired = loss
   } else if (bet.won === undefined) {
     result = "pending";
   } else {
