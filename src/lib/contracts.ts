@@ -1,10 +1,12 @@
 import { Address } from "viem";
+import deployments from "./deployments.json";
 
+// Contract addresses imported from clawdice repo deployments.json
 export const CONTRACTS = {
   baseSepolia: {
-    clawToken: "0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c" as Address,
-    clawdiceVault: "0x42Ba5FC8870860fcE4C81931FD282118616cE480" as Address,
-    clawdice: "0x3971dFAEa81B4C57c195Ae36510ec110375c0F71" as Address,
+    clawToken: deployments.baseSepolia.clawToken as Address,
+    clawdiceVault: deployments.baseSepolia.clawdiceVault as Address,
+    clawdice: deployments.baseSepolia.clawdice as Address,
   },
 } as const;
 
