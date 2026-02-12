@@ -8,7 +8,7 @@ export const config = createConfig(
     transports: {
       [baseSepolia.id]: http(),
     },
-    walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || "",
+    walletConnectProjectId: "223fbf1b-7d21-44e7-b347-23899c9e76e6",
     appName: "Clawdice",
     appDescription: "Provably fair on-chain dice game",
     appUrl: "https://clawdice.xyz",
