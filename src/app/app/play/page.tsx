@@ -49,7 +49,7 @@ export default function PlayPage() {
   });
 
   // Read token allowance
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+  const { data: allowance } = useReadContract({
     address: CONTRACTS.baseSepolia.clawToken,
     abi: ERC20_ABI,
     functionName: "allowance",
