@@ -161,8 +161,31 @@ export default function PlayPage() {
   useEffect(() => {
     if (betState === "waiting" && currentBetId && publicClient) {
       const waitAndClaim = async () => {
-        // Wait a bit for next block
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        // Get the bet's block number and wait for next block
+        try {
+          const bet = await publicClient.readContract({
+            address: CONTRACTS.baseSepolia.clawdice,
+            abi: CLAWDICE_ABI,
+            functionName: "getBet",
+            args: [currentBetId],
+          }) as { blockNumber: bigint };
+          
+          const targetBlock = bet.blockNumber + BigInt(1);
+          console.log("Bet placed at block", bet.blockNumber.toString(), "waiting for block", targetBlock.toString());
+          
+          // Poll until we're past the target block
+          let currentBlock = await publicClient.getBlockNumber();
+          while (currentBlock <= targetBlock) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            currentBlock = await publicClient.getBlockNumber();
+            console.log("Current block:", currentBlock.toString());
+          }
+          console.log("Block ready, proceeding with claim");
+        } catch (err) {
+          console.error("Error waiting for block:", err);
+          // Fall back to simple timeout
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+        }
 
         setBetState("claiming");
         
