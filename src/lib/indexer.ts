@@ -1,5 +1,6 @@
 // Index Supply integration for Clawdice events
 // Using official @indexsupply/indexsupply.js library
+// Note: Index Supply returns lowercase column names
 
 import { query, queryLive } from "@indexsupply/indexsupply.js";
 import { getActiveNetwork } from "./networks";
@@ -53,36 +54,52 @@ export async function getRecentBets(
   limit = 50,
   apiKey?: string
 ): Promise<BetEvent[]> {
-  const result = await query({
-    chainId: BASE_SEPOLIA_CHAIN,
-    apiKey,
-    signatures: [EVENT_SIGNATURES.BetPlaced, EVENT_SIGNATURES.BetClaimed],
-    query: `
-      SELECT
-        p.betId,
-        p.player,
-        p.amount,
-        p.targetOddsE18,
-        p.block_num,
-        c.payout
-      FROM BetPlaced p
-      LEFT JOIN BetClaimed c ON p.betId = c.betId
-      WHERE p.address = '${CLAWDICE_ADDRESS}'
-      ORDER BY p.block_num DESC
-      LIMIT ${limit}
-    `,
-  });
+  // Fetch bets and claims separately (JOINs timeout on Index Supply)
+  const [betsResult, claimsResult] = await Promise.all([
+    query({
+      chainId: BASE_SEPOLIA_CHAIN,
+      apiKey,
+      signatures: [EVENT_SIGNATURES.BetPlaced],
+      query: `
+        SELECT betId, player, amount, targetOddsE18, block_num
+        FROM BetPlaced
+        WHERE address = '${CLAWDICE_ADDRESS}'
+        ORDER BY block_num DESC
+        LIMIT ${limit}
+      `,
+    }),
+    query({
+      chainId: BASE_SEPOLIA_CHAIN,
+      apiKey,
+      signatures: [EVENT_SIGNATURES.BetClaimed],
+      query: `
+        SELECT betId, payout
+        FROM BetClaimed
+        WHERE address = '${CLAWDICE_ADDRESS}'
+      `,
+    }),
+  ]);
 
-  return result.rows.map((row: Record<string, unknown>) => ({
-    betId: String(row.betId),
-    player: String(row.player),
-    amount: BigInt(row.amount as string),
-    odds: Number(BigInt(row.targetOddsE18 as string) / BigInt(10 ** 16)),
-    blockNumber: Number(row.block_num),
-    // won is inferred: if payout exists and > 0, player won
-    won: row.payout !== null ? BigInt(row.payout as string) > 0n : undefined,
-    payout: row.payout !== null ? BigInt(row.payout as string) : undefined,
-  }));
+  // Build claims lookup map (columns come back lowercase)
+  const claimsMap = new Map<string, bigint>();
+  for (const row of claimsResult.rows) {
+    const r = row as Record<string, unknown>;
+    claimsMap.set(String(r.betid), BigInt(r.payout as string));
+  }
+
+  return betsResult.rows.map((row: Record<string, unknown>) => {
+    const betId = String(row.betid);
+    const payout = claimsMap.get(betId);
+    return {
+      betId,
+      player: String(row.player),
+      amount: BigInt(row.amount as string),
+      odds: Number(BigInt(row.targetoddse18 as string) / BigInt(10 ** 16)),
+      blockNumber: Number(row.block_num),
+      won: payout !== undefined ? payout > 0n : undefined,
+      payout,
+    };
+  });
 }
 
 export async function getBetsByPlayer(
@@ -90,76 +107,96 @@ export async function getBetsByPlayer(
   limit = 50,
   apiKey?: string
 ): Promise<BetEvent[]> {
-  const result = await query({
-    chainId: BASE_SEPOLIA_CHAIN,
-    apiKey,
-    signatures: [EVENT_SIGNATURES.BetPlaced, EVENT_SIGNATURES.BetClaimed],
-    query: `
-      SELECT
-        p.betId,
-        p.player,
-        p.amount,
-        p.targetOddsE18,
-        p.block_num,
-        c.payout
-      FROM BetPlaced p
-      LEFT JOIN BetClaimed c ON p.betId = c.betId
-      WHERE p.address = '${CLAWDICE_ADDRESS}'
-        AND p.player = '${player}'
-      ORDER BY p.block_num DESC
-      LIMIT ${limit}
-    `,
-  });
+  // Fetch bets and claims separately (JOINs timeout on Index Supply)
+  const [betsResult, claimsResult] = await Promise.all([
+    query({
+      chainId: BASE_SEPOLIA_CHAIN,
+      apiKey,
+      signatures: [EVENT_SIGNATURES.BetPlaced],
+      query: `
+        SELECT betId, player, amount, targetOddsE18, block_num
+        FROM BetPlaced
+        WHERE address = '${CLAWDICE_ADDRESS}'
+          AND player = '${player}'
+        ORDER BY block_num DESC
+        LIMIT ${limit}
+      `,
+    }),
+    query({
+      chainId: BASE_SEPOLIA_CHAIN,
+      apiKey,
+      signatures: [EVENT_SIGNATURES.BetClaimed],
+      query: `
+        SELECT betId, payout
+        FROM BetClaimed
+        WHERE address = '${CLAWDICE_ADDRESS}'
+          AND player = '${player}'
+      `,
+    }),
+  ]);
 
-  return result.rows.map((row: Record<string, unknown>) => ({
-    betId: String(row.betId),
-    player: String(row.player),
-    amount: BigInt(row.amount as string),
-    odds: Number(BigInt(row.targetOddsE18 as string) / BigInt(10 ** 16)),
-    blockNumber: Number(row.block_num),
-    won: row.payout !== null ? BigInt(row.payout as string) > 0n : undefined,
-    payout: row.payout !== null ? BigInt(row.payout as string) : undefined,
-  }));
+  // Build claims lookup map (columns come back lowercase)
+  const claimsMap = new Map<string, bigint>();
+  for (const row of claimsResult.rows) {
+    const r = row as Record<string, unknown>;
+    claimsMap.set(String(r.betid), BigInt(r.payout as string));
+  }
+
+  return betsResult.rows.map((row: Record<string, unknown>) => {
+    const betId = String(row.betid);
+    const payout = claimsMap.get(betId);
+    return {
+      betId,
+      player: String(row.player),
+      amount: BigInt(row.amount as string),
+      odds: Number(BigInt(row.targetoddse18 as string) / BigInt(10 ** 16)),
+      blockNumber: Number(row.block_num),
+      won: payout !== undefined ? payout > 0n : undefined,
+      payout,
+    };
+  });
 }
 
 export async function getStats(apiKey?: string): Promise<IndexerStats> {
-  // Get total volume and bet count
-  const volumeResult = await query({
-    chainId: BASE_SEPOLIA_CHAIN,
-    apiKey,
-    signatures: [EVENT_SIGNATURES.BetPlaced],
-    query: `
-      SELECT
-        SUM(amount) as total_volume,
-        COUNT(betId) as total_bets,
-        COUNT(DISTINCT player) as unique_players
-      FROM BetPlaced
-      WHERE address = '${CLAWDICE_ADDRESS}'
-    `,
-  });
+  // Fetch volume/bets and payouts in parallel
+  const [volumeResult, payoutsResult] = await Promise.all([
+    query({
+      chainId: BASE_SEPOLIA_CHAIN,
+      apiKey,
+      signatures: [EVENT_SIGNATURES.BetPlaced],
+      query: `
+        SELECT
+          SUM(amount) as total_volume,
+          COUNT(betId) as total_bets,
+          COUNT(DISTINCT player) as unique_players
+        FROM BetPlaced
+        WHERE address = '${CLAWDICE_ADDRESS}'
+      `,
+    }),
+    query({
+      chainId: BASE_SEPOLIA_CHAIN,
+      apiKey,
+      signatures: [EVENT_SIGNATURES.BetClaimed],
+      query: `
+        SELECT SUM(payout) as total_payouts
+        FROM BetClaimed
+        WHERE address = '${CLAWDICE_ADDRESS}'
+      `,
+    }),
+  ]);
 
-  // Get total payouts for house profit calculation
-  const payoutsResult = await query({
-    chainId: BASE_SEPOLIA_CHAIN,
-    apiKey,
-    signatures: [EVENT_SIGNATURES.BetClaimed],
-    query: `
-      SELECT SUM(payout) as total_payouts
-      FROM BetClaimed
-      WHERE address = '${CLAWDICE_ADDRESS}'
-    `,
-  });
+  const row = volumeResult.rows[0] || {};
+  const payoutRow = payoutsResult.rows[0] || {};
+  const r = row as Record<string, unknown>;
+  const pr = payoutRow as Record<string, unknown>;
 
-  const row = volumeResult.rows[0] || { total_volume: "0", total_bets: 0, unique_players: 0 };
-  const payoutRow = payoutsResult.rows[0] || { total_payouts: "0" };
-
-  const totalVolume = BigInt((row as Record<string, unknown>).total_volume as string || "0");
-  const totalPayouts = BigInt((payoutRow as Record<string, unknown>).total_payouts as string || "0");
+  const totalVolume = BigInt((r.total_volume as string) || "0");
+  const totalPayouts = BigInt((pr.total_payouts as string) || "0");
 
   return {
     totalVolume,
-    totalBets: Number((row as Record<string, unknown>).total_bets || 0),
-    uniquePlayers: Number((row as Record<string, unknown>).unique_players || 0),
+    totalBets: Number(r.total_bets || 0),
+    uniquePlayers: Number(r.unique_players || 0),
     houseProfit: totalVolume - totalPayouts,
   };
 }
@@ -168,31 +205,32 @@ export async function getVaultEvents(
   limit = 50,
   apiKey?: string
 ): Promise<VaultEvent[]> {
-  const depositResult = await query({
-    chainId: BASE_SEPOLIA_CHAIN,
-    apiKey,
-    signatures: [EVENT_SIGNATURES.Deposit],
-    query: `
-      SELECT sender, owner, assets, shares, block_num
-      FROM Deposit
-      WHERE address = '${VAULT_ADDRESS}'
-      ORDER BY block_num DESC
-      LIMIT ${limit}
-    `,
-  });
-
-  const withdrawResult = await query({
-    chainId: BASE_SEPOLIA_CHAIN,
-    apiKey,
-    signatures: [EVENT_SIGNATURES.Withdraw],
-    query: `
-      SELECT sender, owner, assets, shares, block_num
-      FROM Withdraw
-      WHERE address = '${VAULT_ADDRESS}'
-      ORDER BY block_num DESC
-      LIMIT ${limit}
-    `,
-  });
+  const [depositResult, withdrawResult] = await Promise.all([
+    query({
+      chainId: BASE_SEPOLIA_CHAIN,
+      apiKey,
+      signatures: [EVENT_SIGNATURES.Deposit],
+      query: `
+        SELECT sender, owner, assets, shares, block_num
+        FROM Deposit
+        WHERE address = '${VAULT_ADDRESS}'
+        ORDER BY block_num DESC
+        LIMIT ${limit}
+      `,
+    }),
+    query({
+      chainId: BASE_SEPOLIA_CHAIN,
+      apiKey,
+      signatures: [EVENT_SIGNATURES.Withdraw],
+      query: `
+        SELECT sender, owner, assets, shares, block_num
+        FROM Withdraw
+        WHERE address = '${VAULT_ADDRESS}'
+        ORDER BY block_num DESC
+        LIMIT ${limit}
+      `,
+    }),
+  ]);
 
   const allEvents = [
     ...depositResult.rows.map((row: Record<string, unknown>) => ({
@@ -239,10 +277,10 @@ export function subscribeToBets(
         for (const row of response.rows) {
           const r = row as Record<string, unknown>;
           onBet({
-            betId: String(r.betId),
+            betId: String(r.betid),
             player: String(r.player),
             amount: BigInt(r.amount as string),
-            odds: Number(BigInt(r.targetOddsE18 as string) / BigInt(10 ** 16)),
+            odds: Number(BigInt(r.targetoddse18 as string) / BigInt(10 ** 16)),
             blockNumber: Number(r.block_num),
           });
         }
