@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance } from "wagmi";
 import { formatEther, parseEther, decodeEventLog } from "viem";
-import { Dice5, Volume2, VolumeX, Info, Clock, Zap, ExternalLink, Coins } from "lucide-react";
+import { Dice5, Volume2, VolumeX, Info, Clock, Zap, Coins } from "lucide-react";
 import { ConnectKitButton } from "connectkit";
 import { CONTRACTS, CLAWDICE_ABI, ERC20_ABI } from "@/lib/contracts";
+import { SwapModal } from "@/components/SwapModal";
 import clsx from "clsx";
 
 type BetState = "idle" | "approving" | "placing" | "waiting" | "claiming" | "won" | "lost";
@@ -22,6 +23,7 @@ export default function PlayPage() {
   const [lastResult, setLastResult] = useState<{ won: boolean; payout: bigint } | null>(null);
   const [currentBetId, setCurrentBetId] = useState<bigint | null>(null);
   const [useETH, setUseETH] = useState(false);
+  const [swapOpen, setSwapOpen] = useState(false);
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -377,15 +379,13 @@ export default function PlayPage() {
                     }
                   </p>
                   {!useETH && (
-                    <a
-                      href={`https://app.uniswap.org/swap?outputCurrency=0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c&chain=base_sepolia`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => setSwapOpen(true)}
                       className="text-xs text-accent-dark hover:text-accent flex items-center gap-1"
                     >
                       <Coins className="w-3 h-3" />
                       Get CLAW
-                    </a>
+                    </button>
                   )}
                 </div>
               </div>
@@ -445,22 +445,23 @@ export default function PlayPage() {
 
         {/* Get CLAW Callout - show when connected but low balance */}
         {mounted && isConnected && userTokenBalance !== undefined && userTokenBalance < parseEther("1") && (
-          <a
-            href={`https://app.uniswap.org/swap?outputCurrency=0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c&chain=base_sepolia`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="card-kawaii p-4 mt-4 flex items-center justify-between hover:bg-white/80 transition-colors"
+          <button
+            onClick={() => setSwapOpen(true)}
+            className="card-kawaii p-4 mt-4 flex items-center justify-between hover:bg-white/80 transition-colors w-full text-left"
           >
             <div className="flex items-center gap-3">
               <Coins className="w-5 h-5 text-accent-dark" />
               <div>
                 <p className="font-semibold text-foreground text-sm">Need CLAW tokens?</p>
-                <p className="text-xs text-foreground/60">Swap ETH for CLAW on Uniswap</p>
+                <p className="text-xs text-foreground/60">Swap ETH for CLAW instantly</p>
               </div>
             </div>
-            <ExternalLink className="w-4 h-4 text-foreground/40" />
-          </a>
+            <span className="text-xs text-accent-dark font-medium">Swap →</span>
+          </button>
         )}
+
+        {/* Swap Modal */}
+        <SwapModal isOpen={swapOpen} onClose={() => setSwapOpen(false)} />
 
         {/* Info Box */}
         <div className="card-kawaii p-4 mt-4 flex gap-3">

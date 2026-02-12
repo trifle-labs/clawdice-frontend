@@ -3,8 +3,8 @@ import { Address } from "viem";
 export const CONTRACTS = {
   baseSepolia: {
     clawToken: "0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c" as Address,
-    clawdiceVault: "0x4436Dd17FC83ec955f6659061cB02d8f081B33BB" as Address,
-    clawdice: "0x352dCE89414D5Cd08e19a48468BCDd96b7C39336" as Address,
+    clawdiceVault: "0x962A995CF074019E8C9147FA2e58e567482904D8" as Address,
+    clawdice: "0xa0e221892D4eEF6448d1922852DDD76b1a412970" as Address,
   },
 } as const;
 
@@ -28,6 +28,13 @@ export const CLAWDICE_ABI = [
       { name: "minTokensOut", type: "uint256" },
     ],
     outputs: [{ name: "betId", type: "uint256" }],
+  },
+  {
+    name: "swapETHForClaw",
+    type: "function",
+    stateMutability: "payable",
+    inputs: [{ name: "minTokensOut", type: "uint256" }],
+    outputs: [{ name: "tokensReceived", type: "uint256" }],
   },
   {
     name: "claim",

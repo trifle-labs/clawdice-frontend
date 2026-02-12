@@ -7,10 +7,15 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { DEFAULT_NETWORK } from "@/lib/networks";
+import { SwapModal } from "./SwapModal";
 
 export function Header() {
   const [currentNetwork, setCurrentNetwork] = useState(DEFAULT_NETWORK);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [swapOpen, setSwapOpen] = useState(false);
+  
+  // Show in-app swap on testnet, Uniswap link on mainnet
+  const isTestnet = currentNetwork === "base-sepolia";
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-primary/20">
@@ -35,14 +40,23 @@ export function Header() {
             <NavLink href="/stats">Stats</NavLink>
             <NavLink href="/app/stake">Stake</NavLink>
             <NavLink href="/app/play">Play</NavLink>
-            <a
-              href="https://app.uniswap.org/swap?outputCurrency=0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c&chain=base_sepolia"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent-dark hover:text-accent transition-colors font-medium"
-            >
-              Get CLAW ↗
-            </a>
+            {isTestnet ? (
+              <button
+                onClick={() => setSwapOpen(true)}
+                className="text-accent-dark hover:text-accent transition-colors font-medium"
+              >
+                Get CLAW
+              </button>
+            ) : (
+              <a
+                href="https://app.uniswap.org/swap?outputCurrency=0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c&chain=base"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent-dark hover:text-accent transition-colors font-medium"
+              >
+                Get CLAW ↗
+              </a>
+            )}
           </nav>
 
           <div className="flex items-center gap-2">
@@ -72,21 +86,33 @@ export function Header() {
             <NavLink href="/stats" onClick={() => setMenuOpen(false)}>Stats</NavLink>
             <NavLink href="/app/stake" onClick={() => setMenuOpen(false)}>Stake</NavLink>
             <NavLink href="/app/play" onClick={() => setMenuOpen(false)}>Play</NavLink>
-            <a
-              href="https://app.uniswap.org/swap?outputCurrency=0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c&chain=base_sepolia"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent-dark hover:text-accent transition-colors font-medium"
-              onClick={() => setMenuOpen(false)}
-            >
-              Get CLAW ↗
-            </a>
+            {isTestnet ? (
+              <button
+                onClick={() => { setSwapOpen(true); setMenuOpen(false); }}
+                className="text-accent-dark hover:text-accent transition-colors font-medium text-left"
+              >
+                Get CLAW
+              </button>
+            ) : (
+              <a
+                href="https://app.uniswap.org/swap?outputCurrency=0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c&chain=base"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent-dark hover:text-accent transition-colors font-medium"
+                onClick={() => setMenuOpen(false)}
+              >
+                Get CLAW ↗
+              </a>
+            )}
           </nav>
           <div className="mt-4">
             <ConnectKitButton />
           </div>
         </div>
       )}
+
+      {/* Swap Modal */}
+      <SwapModal isOpen={swapOpen} onClose={() => setSwapOpen(false)} />
     </header>
   );
 }
