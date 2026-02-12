@@ -61,12 +61,12 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-xl">
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">Get CLAW</h2>
           <button 
             onClick={onClose}
-            className="text-foreground/60 hover:text-foreground text-2xl leading-none"
+            className="text-gray-900/60 hover:text-gray-900 text-2xl leading-none"
           >
             ×
           </button>
@@ -75,7 +75,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
         {/* Mainnet: Link to Uniswap */}
         {isMainnet && (
           <div className="text-center py-6">
-            <p className="text-foreground/60 mb-4">Swap ETH for CLAW on Uniswap</p>
+            <p className="text-gray-900/60 mb-4">Swap ETH for CLAW on Uniswap</p>
             <a
               href={`https://app.uniswap.org/swap?outputCurrency=${CLAW_TOKEN}&chain=base`}
               target="_blank"
@@ -95,7 +95,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
               <div className="text-center py-8">
                 <div className="text-4xl mb-4">🎰</div>
                 <p className="text-lg font-medium text-green-500">Swap Successful!</p>
-                <p className="text-sm text-foreground/60 mt-2">CLAW tokens added to your wallet</p>
+                <p className="text-sm text-gray-900/60 mt-2">CLAW tokens added to your wallet</p>
                 <button
                   onClick={onClose}
                   className="mt-6 w-full py-3 bg-primary text-primary-foreground rounded-xl font-medium"
@@ -106,8 +106,8 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
             ) : (
               <>
                 {/* ETH Input */}
-                <div className="bg-background rounded-xl p-4 mb-2">
-                  <div className="flex justify-between text-sm text-foreground/60 mb-2">
+                <div className="bg-gray-50 rounded-xl p-4 mb-2">
+                  <div className="flex justify-between text-sm text-gray-900/60 mb-2">
                     <span>You pay</span>
                     <span>
                       Balance: {ethBalance ? parseFloat(formatEther(ethBalance.value)).toFixed(4) : "0"} ETH
@@ -135,7 +135,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
 
                 {/* Arrow */}
                 <div className="flex justify-center -my-1 relative z-10">
-                  <div className="bg-card border border-border rounded-lg p-2">
+                  <div className="bg-white border border-gray-200 rounded-lg p-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
@@ -143,8 +143,8 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                 </div>
 
                 {/* CLAW Output */}
-                <div className="bg-background rounded-xl p-4 mb-6">
-                  <div className="flex justify-between text-sm text-foreground/60 mb-2">
+                <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                  <div className="flex justify-between text-sm text-gray-900/60 mb-2">
                     <span>You receive (estimated)</span>
                   </div>
                   <div className="flex items-center gap-3">
@@ -156,7 +156,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                 </div>
 
                 {/* Info */}
-                <div className="text-xs text-foreground/50 mb-4 p-3 bg-background rounded-lg">
+                <div className="text-xs text-gray-900/50 mb-4 p-3 bg-gray-50 rounded-lg">
                   <p>⚡ Swaps via Uniswap V4 pool</p>
                   <p className="mt-1">💡 Testnet only - rates may vary</p>
                 </div>
@@ -192,7 +192,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
         {/* Unsupported network */}
         {!isMainnet && !isTestnet && (
           <div className="text-center py-8">
-            <p className="text-foreground/60">Please switch to Base or Base Sepolia</p>
+            <p className="text-gray-900/60">Please switch to Base or Base Sepolia</p>
           </div>
         )}
       </div>
