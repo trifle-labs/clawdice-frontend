@@ -27,7 +27,7 @@ export function Header() {
         <div className="flex items-center justify-between h-14">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/logo.jpg"
+              src="/logo.png"
               alt="Clawdice"
               width={32}
               height={32}

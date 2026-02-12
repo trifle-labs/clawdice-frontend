@@ -18,7 +18,7 @@ export default function Home() {
         <div className="relative z-10 text-center max-w-lg mx-auto">
           <div className="flex justify-center mb-6">
             <Image
-              src="/logo.jpg"
+              src="/logo.png"
               alt="Clawdice"
               width={140}
               height={140}

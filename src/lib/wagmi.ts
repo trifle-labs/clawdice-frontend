@@ -15,7 +15,7 @@ export const config = createConfig(
     appName: "Clawdice",
     appDescription: "Provably fair on-chain dice game",
     appUrl: "https://clawdice.xyz",
-    appIcon: "https://clawdice.xyz/logo.jpg",
+    appIcon: "https://clawdice.xyz/logo.png",
     ssr: true,
   })
 );
