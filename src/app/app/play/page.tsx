@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatEther, parseEther, decodeEventLog } from "viem";
 import { Dice5, Volume2, VolumeX, Info, Clock, Zap, Coins } from "lucide-react";
 import { ConnectKitButton } from "connectkit";
@@ -14,6 +15,7 @@ type BetState = "idle" | "approving" | "placing" | "waiting" | "claiming" | "won
 export default function PlayPage() {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
+  const queryClient = useQueryClient();
   const [mounted, setMounted] = useState(false);
   const [amount, setAmount] = useState("");
   const [odds, setOdds] = useState(50);
@@ -130,7 +132,8 @@ export default function PlayPage() {
   useEffect(() => {
     if (isSuccess && receipt) {
       if (betState === "approving") {
-        refetchAllowance();
+        // Invalidate all read queries to ensure allowance updates everywhere
+        queryClient.invalidateQueries({ queryKey: ["readContract"] });
         setBetState("idle");
         resetWrite();
       } else if (betState === "placing") {
@@ -150,7 +153,7 @@ export default function PlayPage() {
         }
       }
     }
-  }, [isSuccess, receipt, betState, parseBetId, parseResult, refetchAllowance, refetchBalance, resetWrite]);
+  }, [isSuccess, receipt, betState, parseBetId, parseResult, queryClient, refetchBalance, resetWrite]);
 
   // Wait for next block then claim
   useEffect(() => {
