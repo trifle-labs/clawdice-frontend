@@ -48,11 +48,15 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       if (usdValue >= 1_000_000) return `$${(usdValue / 1_000_000).toFixed(1)}M`;
       if (usdValue >= 1_000) return `$${(usdValue / 1_000).toFixed(1)}K`;
       if (usdValue >= 1) return `$${usdValue.toFixed(decimals)}`;
-      return `$${usdValue.toFixed(4)}`;
+      if (usdValue >= 0.01) return `$${usdValue.toFixed(4)}`;
+      return `$${usdValue.toFixed(6)}`;
     } else {
       if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M CLAW`;
       if (amount >= 1_000) return `${(amount / 1_000).toFixed(1)}K CLAW`;
-      return `${amount.toFixed(decimals)} CLAW`;
+      if (amount >= 1) return `${amount.toFixed(decimals)} CLAW`;
+      if (amount >= 0.01) return `${amount.toFixed(4)} CLAW`;
+      if (amount > 0) return `${amount.toFixed(6)} CLAW`;
+      return `0 CLAW`;
     }
   };
 
