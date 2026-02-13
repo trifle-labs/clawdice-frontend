@@ -45,6 +45,7 @@ export function Header() {
   const isTestnet = chainId === baseSepolia.id;
 
   return (
+  <>
     <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-primary/20">
       <div className="max-w-5xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
@@ -165,9 +166,11 @@ export function Header() {
         </div>
       )}
 
-      {/* Swap Modal */}
-      <SwapModal isOpen={swapOpen} onClose={() => setSwapOpen(false)} />
     </header>
+
+    {/* Swap Modal - rendered outside header to avoid z-index stacking context issues */}
+    <SwapModal isOpen={swapOpen} onClose={() => setSwapOpen(false)} />
+  </>
   );
 }
 
