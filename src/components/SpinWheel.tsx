@@ -132,7 +132,9 @@ export function SpinWheel({
   const multiplier = 100 / winChance;
   const multiplierText = multiplier >= 10 ? `${multiplier.toFixed(0)}x` : `${multiplier.toFixed(1)}x`;
   const greenCenterAngle = greenEndDegrees / 2; // Center of green zone
-  const labelRadius = radius * 0.6; // Position label at 60% of radius
+  // Move label outside when zone is too small (below 10%)
+  const isSmallZone = winChance < 10;
+  const labelRadius = isSmallZone ? radius + 20 : radius * 0.6;
   const labelPos = angleToPoint(greenCenterAngle, labelRadius);
 
   return (
@@ -143,14 +145,14 @@ export function SpinWheel({
         {/* Green (win) section */}
         <path d={arcPath(0, greenEndDegrees, radius)} fill="url(#greenGradient)" />
         
-        {/* Multiplier label in green zone */}
+        {/* Multiplier label in/near green zone */}
         <text
           x={labelPos.x}
           y={labelPos.y}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill="#2D5A4A"
-          fontSize={size * 0.12}
+          fill={isSmallZone ? "#7DD4B0" : "#2D5A4A"}
+          fontSize={isSmallZone ? size * 0.1 : size * 0.12}
           fontWeight="bold"
           style={{ pointerEvents: 'none' }}
         >
