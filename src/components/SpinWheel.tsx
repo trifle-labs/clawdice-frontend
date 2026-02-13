@@ -173,15 +173,15 @@ export function SpinWheel({
           className="drop-shadow-sm"
         />
         
-        {/* Gradients */}
+        {/* Gradients - kawaii palette */}
         <defs>
           <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#22c55e" />
-            <stop offset="100%" stopColor="#16a34a" />
+            <stop offset="0%" stopColor="#A8E6CF" />
+            <stop offset="100%" stopColor="#7DD4B0" />
           </linearGradient>
           <linearGradient id="redGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ef4444" />
-            <stop offset="100%" stopColor="#dc2626" />
+            <stop offset="0%" stopColor="#E879A0" />
+            <stop offset="100%" stopColor="#D35D8A" />
           </linearGradient>
         </defs>
         
@@ -218,27 +218,27 @@ export function SpinWheel({
             y1={center}
             x2={center}
             y2={center - pointerLength}
-            stroke="#1f2937"
+            stroke="#4A4A6A"
             strokeWidth="4"
             strokeLinecap="round"
           />
           {/* Pointer tip (arrow) */}
           <polygon
             points={`${center},${center - pointerLength - 10} ${center - 7},${center - pointerLength + 2} ${center + 7},${center - pointerLength + 2}`}
-            fill="#1f2937"
+            fill="#4A4A6A"
           />
           {/* Center hub */}
           <circle
             cx={center}
             cy={center}
             r="10"
-            fill="#1f2937"
+            fill="#4A4A6A"
           />
           <circle
             cx={center}
             cy={center}
             r="5"
-            fill="#ec4899"
+            fill="#B8A9E8"
           />
         </svg>
       </motion.div>
@@ -248,7 +248,7 @@ export function SpinWheel({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className={`
             px-3 py-1.5 rounded-full text-white text-sm font-bold shadow-lg
-            ${resultPosition < adjustedWinChance ? "bg-green-500" : "bg-red-500"}
+            ${resultPosition < adjustedWinChance ? "bg-[#7DD4B0]" : "bg-[#E879A0]"}
           `}>
             {resultPosition.toFixed(2)}%
           </div>
