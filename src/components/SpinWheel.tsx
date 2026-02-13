@@ -128,6 +128,13 @@ export function SpinWheel({
     return `M ${center} ${center} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
   }, [center, angleToPoint]);
 
+  // Calculate multiplier and position for label in green zone
+  const multiplier = 100 / winChance;
+  const multiplierText = multiplier >= 10 ? `${multiplier.toFixed(0)}x` : `${multiplier.toFixed(1)}x`;
+  const greenCenterAngle = greenEndDegrees / 2; // Center of green zone
+  const labelRadius = radius * 0.6; // Position label at 60% of radius
+  const labelPos = angleToPoint(greenCenterAngle, labelRadius);
+
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="drop-shadow-lg">
@@ -135,6 +142,20 @@ export function SpinWheel({
         
         {/* Green (win) section */}
         <path d={arcPath(0, greenEndDegrees, radius)} fill="url(#greenGradient)" />
+        
+        {/* Multiplier label in green zone */}
+        <text
+          x={labelPos.x}
+          y={labelPos.y}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#2D5A4A"
+          fontSize={size * 0.12}
+          fontWeight="bold"
+          style={{ pointerEvents: 'none' }}
+        >
+          {multiplierText}
+        </text>
         
         {/* Red (lose) section */}
         <path d={arcPath(greenEndDegrees, 360, radius)} fill="url(#redGradient)" />
