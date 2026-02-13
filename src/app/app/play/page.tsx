@@ -28,6 +28,7 @@ export default function PlayPage() {
   const isWrongNetwork = isConnected && chainId !== 84532; // Base Sepolia
   const [mounted, setMounted] = useState(false);
   const [amount, setAmount] = useState("");
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const [odds, setOdds] = useState(50);
   const [betState, setBetState] = useState<BetState>("idle");
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -495,10 +496,12 @@ export default function PlayPage() {
     setLastResult(null);
     setResultPosition(null);
     setCurrentBetId(null);
+    setSelectedPreset(null);
     resetWrite();
   };
 
   const handleMax = () => {
+    setSelectedPreset(null);
     if (useETH) {
       // For ETH, leave some for gas
       if (ethBalance) {
@@ -758,7 +761,7 @@ export default function PlayPage() {
                   <input
                     type="number"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) => { setAmount(e.target.value); setSelectedPreset(null); }}
                     placeholder="0.0"
                     className="w-full bg-white/50 border border-primary/20 rounded-xl px-4 py-3 text-lg font-mono focus:outline-none focus:border-primary"
                   />
@@ -795,8 +798,13 @@ export default function PlayPage() {
                           return v.toFixed(8);
                         };
                         setAmount(targetVal > 0 ? formatVal(targetVal) : "0");
+                        setSelectedPreset(pct);
                       }}
-                      className="flex-1 py-1.5 text-xs font-medium rounded-lg border-2 border-accent/30 hover:border-accent hover:bg-accent/10 text-foreground/70 transition-colors"
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-lg border-2 transition-colors ${
+                        selectedPreset === pct
+                          ? "border-accent bg-accent/20 text-accent-dark"
+                          : "border-accent/30 hover:border-accent hover:bg-accent/10 text-foreground/70"
+                      }`}
                     >
                       {pct}%
                     </button>
