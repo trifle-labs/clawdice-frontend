@@ -748,38 +748,45 @@ export default function PlayPage() {
                     </button>
                   </div>
                 </div>
-                {/* Amount Preset Buttons */}
+                {/* Amount Preset Buttons - accent colored to differentiate from odds presets */}
                 <div className="flex gap-2 mt-2">
-                  {[10, 25, 50, 100].map((pct) => (
-                    <button
-                      key={pct}
-                      onClick={() => {
-                        const balance = useETH 
-                          ? (ethBalance ? Number(ethBalance.formatted) : 0)
-                          : (userTokenBalance ? Number(formatEther(userTokenBalance)) : 0);
-                        let val = (balance * pct / 100);
-                        // Leave some ETH for gas
-                        if (useETH && pct === 100) val = Math.max(0, val - 0.001);
-                        // Cap at maxBet (for CLAW bets)
-                        if (!useETH && maxBet) {
-                          const maxBetNum = Number(formatEther(maxBet));
-                          val = Math.min(val, maxBetNum);
-                        }
-                        // Use dynamic precision - more decimals for small amounts
-                        const formatVal = (v: number) => {
-                          if (v === 0) return "0";
-                          if (v >= 1) return v.toFixed(2);
-                          if (v >= 0.01) return v.toFixed(4);
-                          if (v >= 0.0001) return v.toFixed(6);
-                          return v.toFixed(8);
-                        };
-                        setAmount(val > 0 ? formatVal(val) : "0");
-                      }}
-                      className="flex-1 py-1.5 text-xs font-medium glass rounded-lg hover:bg-white/80 transition-colors"
-                    >
-                      {pct}%
-                    </button>
-                  ))}
+                  {[10, 25, 50, 100].map((pct) => {
+                    const balance = useETH 
+                      ? (ethBalance ? Number(ethBalance.formatted) : 0)
+                      : (userTokenBalance ? Number(formatEther(userTokenBalance)) : 0);
+                    let targetVal = (balance * pct / 100);
+                    if (useETH && pct === 100) targetVal = Math.max(0, targetVal - 0.001);
+                    if (!useETH && maxBet) {
+                      const maxBetNum = Number(formatEther(maxBet));
+                      targetVal = Math.min(targetVal, maxBetNum);
+                    }
+                    const currentAmount = parseFloat(amount) || 0;
+                    const isActive = targetVal > 0 && Math.abs(currentAmount - targetVal) < 0.0001;
+                    
+                    return (
+                      <button
+                        key={pct}
+                        onClick={() => {
+                          // Use dynamic precision - more decimals for small amounts
+                          const formatVal = (v: number) => {
+                            if (v === 0) return "0";
+                            if (v >= 1) return v.toFixed(2);
+                            if (v >= 0.01) return v.toFixed(4);
+                            if (v >= 0.0001) return v.toFixed(6);
+                            return v.toFixed(8);
+                          };
+                          setAmount(targetVal > 0 ? formatVal(targetVal) : "0");
+                        }}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg border-2 transition-colors ${
+                          isActive
+                            ? "border-accent bg-accent/10 text-accent-dark"
+                            : "border-foreground/20 hover:border-accent/50 text-foreground/70"
+                        }`}
+                      >
+                        {pct}%
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className="flex items-center justify-between mt-2">
                   <p className="text-xs text-foreground/50">
