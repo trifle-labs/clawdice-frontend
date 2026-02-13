@@ -11,8 +11,9 @@ import { SwapModal } from "@/components/SwapModal";
 import { SpinWheel } from "@/components/SpinWheel";
 import { useSponsoredClaim } from "@/hooks/useSponsoredClaim";
 import { useAutoReveal } from "@/hooks/useAutoReveal";
+import { useSessionKey } from "@/hooks/useSessionKey";
 import clsx from "clsx";
-import { X, Check, AlertCircle } from "lucide-react";
+import { X, Check, AlertCircle, ToggleLeft, ToggleRight } from "lucide-react";
 
 type BetState = "idle" | "approving" | "placing" | "waiting" | "claiming" | "won" | "lost";
 
@@ -35,6 +36,14 @@ export default function PlayPage() {
   const queryClient = useQueryClient();
   const { sponsoredClaim } = useSponsoredClaim();
   const { revealedBets, revealingBets, clearRevealed } = useAutoReveal();
+  const { 
+    isActive: hasSession, 
+    isCreating: isCreatingSession, 
+    createSession, 
+    placeBetWithSession,
+    timeRemaining: sessionTimeRemaining,
+    error: sessionError,
+  } = useSessionKey();
   const chainId = useChainId();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const { open: openWalletModal } = useWeb3Modal();
@@ -73,6 +82,9 @@ export default function PlayPage() {
     resetOnLoss: true,
   });
   const [autoBetStats, setAutoBetStats] = useState({ betsPlaced: 0, wins: 0, losses: 0, profit: BigInt(0) });
+  
+  // Session key / skip wallet popup
+  const [skipWalletPopup, setSkipWalletPopup] = useState(false);
 
   // Scroll to spinner when bet starts
   const scrollToSpinner = useCallback(() => {
@@ -499,8 +511,55 @@ export default function PlayPage() {
 
     setBetState("placing");
     setIsRolling(true);
+    setErrorMsg(null);
     scrollToSpinner();
 
+    // Use session key for gasless betting (skip wallet popup)
+    if (skipWalletPopup && hasSession && !useETH) {
+      try {
+        const txHash = await placeBetWithSession(
+          parseEther(amount),
+          BigInt(odds) * BigInt(10 ** 16)
+        );
+        
+        if (txHash && publicClient) {
+          // Wait for the transaction and parse the bet ID
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+          
+          if (receipt.status === "success") {
+            // Parse BetPlaced event to get bet ID
+            for (const log of receipt.logs) {
+              try {
+                const decoded = decodeEventLog({
+                  abi: CLAWDICE_ABI,
+                  data: log.data,
+                  topics: log.topics,
+                });
+                if (decoded.eventName === "BetPlaced" || decoded.eventName === "BetPlacedViaSession") {
+                  const betId = (decoded.args as { betId: bigint }).betId;
+                  setCurrentBetId(betId);
+                  setBetState("waiting");
+                  return;
+                }
+              } catch {
+                // Not our event
+              }
+            }
+          }
+          
+          throw new Error("Could not find bet ID in transaction");
+        }
+      } catch (err) {
+        console.error("Session bet failed:", err);
+        const errorMessage = err instanceof Error ? err.message : "Session bet failed";
+        setErrorMsg(errorMessage);
+        setBetState("idle");
+        setIsRolling(false);
+        return;
+      }
+    }
+
+    // Normal flow - user signs each transaction
     if (useETH) {
       // Place bet with ETH (atomic swap) - needs higher gas for Uniswap V4 swap
       writeContract({
@@ -916,6 +975,60 @@ export default function PlayPage() {
                 </div>
               </div>
 
+              {/* Skip Wallet Popup Toggle */}
+              {!useETH && (
+                <div className="mb-4">
+                  <button
+                    onClick={async () => {
+                      if (!skipWalletPopup && !hasSession) {
+                        // Turning on - create session first
+                        const success = await createSession(24, parseEther("1000"));
+                        if (success) {
+                          setSkipWalletPopup(true);
+                        }
+                      } else if (skipWalletPopup && hasSession) {
+                        // Turning off - revoke session
+                        setSkipWalletPopup(false);
+                        // Optionally revoke on-chain: await revokeSession();
+                      } else {
+                        setSkipWalletPopup(!skipWalletPopup);
+                      }
+                    }}
+                    disabled={isCreatingSession}
+                    className="w-full flex items-center justify-between p-3 bg-white/30 hover:bg-white/50 rounded-xl transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      {skipWalletPopup && hasSession ? (
+                        <ToggleRight className="w-5 h-5 text-primary" />
+                      ) : (
+                        <ToggleLeft className="w-5 h-5 text-foreground/40" />
+                      )}
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-foreground">
+                          {isCreatingSession ? "Creating session..." : "Skip wallet popup"}
+                        </p>
+                        <p className="text-xs text-foreground/50">
+                          {hasSession && skipWalletPopup
+                            ? `Active for ${Math.floor(sessionTimeRemaining / 3600)}h ${Math.floor((sessionTimeRemaining % 3600) / 60)}m`
+                            : "Sign once, bet freely for 24h"}
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      className={clsx(
+                        "w-10 h-6 rounded-full transition-colors flex items-center px-1",
+                        skipWalletPopup && hasSession ? "bg-primary justify-end" : "bg-foreground/20 justify-start"
+                      )}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                    </div>
+                  </button>
+                  {sessionError && (
+                    <p className="text-xs text-red-500 mt-1">{sessionError}</p>
+                  )}
+                </div>
+              )}
+
               {/* Action Buttons */}
               {needsApproval() ? (
                 <button
@@ -930,7 +1043,7 @@ export default function PlayPage() {
               ) : (
                 <button
                   onClick={handlePlaceBet}
-                  disabled={!amount || isPending || isConfirming}
+                  disabled={!amount || isPending || isConfirming || isCreatingSession}
                   className="w-full btn-accent rounded-full py-3 font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <Zap className="w-5 h-5" />
