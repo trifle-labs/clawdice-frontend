@@ -66,7 +66,7 @@ export default function PlayPage() {
   });
 
   // Read token allowance
-  const { data: allowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: CONTRACTS.baseSepolia.clawToken,
     abi: ERC20_ABI,
     functionName: "allowance",
@@ -218,7 +218,8 @@ export default function PlayPage() {
   useEffect(() => {
     if (isSuccess && receipt) {
       if (betState === "approving") {
-        // Invalidate all read queries to ensure allowance updates everywhere
+        // Refetch allowance to update UI immediately
+        refetchAllowance();
         queryClient.invalidateQueries({ queryKey: ["readContract"] });
         setBetState("idle");
         resetWrite();
@@ -263,7 +264,7 @@ export default function PlayPage() {
         }
       }
     }
-  }, [isSuccess, receipt, betState, parseBetId, parseResult, queryClient, refetchBalance, resetWrite, address]);
+  }, [isSuccess, receipt, betState, parseBetId, parseResult, queryClient, refetchBalance, refetchAllowance, resetWrite, address]);
 
   // Wait for next block then claim (try sponsored first, fall back to regular)
   useEffect(() => {
@@ -878,10 +879,12 @@ export default function PlayPage() {
               {needsApproval() ? (
                 <button
                   onClick={handleApprove}
-                  disabled={!amount || isPending || isConfirming}
+                  disabled={!amount || isPending || isConfirming || (betState as string) === "approving"}
                   className="w-full btn-kawaii disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isPending || isConfirming ? "Approving..." : "Approve CLAW"}
+                  {(betState as string) === "approving" 
+                    ? (isConfirming ? "Confirming..." : "Waiting for wallet...")
+                    : (isPending ? "Approving..." : "Approve CLAW")}
                 </button>
               ) : (
                 <button
