@@ -44,9 +44,9 @@ export function SpinWheel({
   const winSectionDegrees = (adjustedWinChance / 100) * 360;
   
   // Calculate result angle (where the pointer should land)
-  // Negative rotation because CSS rotates clockwise but our wheel is drawn counter-clockwise
+  // 0% = top (0°), 25% = right (90°), 50% = bottom (180°), 75% = left (270°)
   const resultAngle = resultPosition !== null 
-    ? 360 - (resultPosition / 100) * 360
+    ? (resultPosition / 100) * 360
     : 0;
 
   // Continuous spin animation while waiting
@@ -121,13 +121,15 @@ export function SpinWheel({
     }
   }, [resultPosition, isSpinning, resultAngle, controls, currentRotation, onSpinComplete]);
 
-  // Reset when starting fresh
+  // Reset when starting fresh spin
   useEffect(() => {
     if (!isSpinning && resultPosition === null) {
       isLandingRef.current = false;
-      // Don't reset rotation - keep where it landed for visual continuity
+      // Reset rotation to 0 for clean start
+      setCurrentRotation(0);
+      controls.set({ rotate: 0 });
     }
-  }, [isSpinning, resultPosition]);
+  }, [isSpinning, resultPosition, controls]);
 
   const center = size / 2;
   const radius = size / 2 - 4;
@@ -146,7 +148,8 @@ export function SpinWheel({
     
     const largeArc = endAngle - startAngle > 180 ? 1 : 0;
     
-    return `M ${center} ${center} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+    // sweep-flag = 0 (counter-clockwise in SVG coords) = visually clockwise
+    return `M ${center} ${center} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 0 ${x2} ${y2} Z`;
   }, [center]);
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance, useChainId, useSwitchChain } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatEther, parseEther, decodeEventLog } from "viem";
@@ -40,6 +40,12 @@ export default function PlayPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
+  const spinnerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to spinner when bet starts
+  const scrollToSpinner = useCallback(() => {
+    spinnerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -222,6 +228,7 @@ export default function PlayPage() {
           setCurrentBetId(betId);
           setBetState("waiting");
           setIsRolling(true);
+          scrollToSpinner();
         }
       } else if (betState === "claiming") {
         // Check if this was our bet before showing success screen
@@ -572,7 +579,7 @@ export default function PlayPage() {
         {/* Main Game Card */}
         <div className="card-kawaii p-6">
           {/* Spin Wheel Display */}
-          <div className="flex justify-center mb-6">
+          <div ref={spinnerRef} className="flex justify-center mb-6">
             <SpinWheel
               winChance={odds}
               houseEdge={1}
