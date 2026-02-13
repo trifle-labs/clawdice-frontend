@@ -305,6 +305,7 @@ export default function PlayPage() {
         if (betId) {
           setCurrentBetId(betId);
           setBetState("waiting");
+          refetchBalance(); // Update balance after bet is placed
           // isRolling already true from handlePlaceBet
         }
       } else if (betState === "claiming") {
@@ -621,6 +622,7 @@ export default function PlayPage() {
                   const betId = (decoded.args as { betId: bigint }).betId;
                   setCurrentBetId(betId);
                   setBetState("waiting");
+                  refetchBalance(); // Update balance after bet is placed
                   return;
                 }
               } catch {
