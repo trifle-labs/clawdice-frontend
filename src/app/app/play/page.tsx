@@ -324,11 +324,28 @@ export default function PlayPage() {
         
         if (isOurBet) {
           const result = parseResult(receipt);
-          if (result) {
-            setLastResult(result);
-            setBetState(result.won ? "won" : "lost");
-            setIsRolling(false);
-            refetchBalance();
+          if (result && currentBetId && publicClient) {
+            // Compute result position for wheel animation (async)
+            (async () => {
+              try {
+                const betInfo = await publicClient.readContract({
+                  address: CONTRACTS.baseSepolia.clawdice,
+                  abi: CLAWDICE_ABI,
+                  functionName: "getBet",
+                  args: [currentBetId],
+                }) as { blockNumber: bigint };
+                const position = await computeResultPosition(currentBetId, betInfo.blockNumber);
+                setResultPosition(position);
+                setLastResult({ ...result, resultPosition: position });
+              } catch (err) {
+                console.error("Failed to compute result position:", err);
+                setLastResult(result);
+                setIsRolling(false); // Fallback: stop wheel immediately if can't compute position
+              }
+              setBetState(result.won ? "won" : "lost");
+              // Don't set isRolling=false - let onSpinComplete handle it after wheel stops
+              refetchBalance();
+            })();
           }
         } else {
           // Not our bet - silently reset
@@ -338,7 +355,7 @@ export default function PlayPage() {
         }
       }
     }
-  }, [isSuccess, receipt, betState, parseBetId, parseResult, queryClient, refetchBalance, refetchAllowance, resetWrite, address]);
+  }, [isSuccess, receipt, betState, parseBetId, parseResult, queryClient, refetchBalance, refetchAllowance, resetWrite, address, currentBetId, publicClient, computeResultPosition]);
 
   // Wait for next block then claim (try sponsored first, fall back to regular)
   useEffect(() => {
@@ -446,14 +463,14 @@ export default function PlayPage() {
                     setResultPosition(position);
                     setLastResult({ won: true, payout, resultPosition: position });
                     setBetState("won");
-                    setIsRolling(false);
+                    // Don't set isRolling=false here - let onSpinComplete handle it after wheel stops
                     refetchBalance();
                     return;
                   } else {
                     // Not our bet - just reset state silently
                     console.log("Revealed bet for another player:", player);
                     setBetState("idle");
-                    setIsRolling(false);
+                    setIsRolling(false); // OK to stop immediately for other player's bets
                     setResultPosition(null);
                     return;
                   }
@@ -477,7 +494,7 @@ export default function PlayPage() {
                       setResultPosition(position);
                       setLastResult({ won: false, payout: BigInt(0), resultPosition: position });
                       setBetState("lost");
-                      setIsRolling(false);
+                      // Don't set isRolling=false here - let onSpinComplete handle it after wheel stops
                       refetchBalance();
                     } else {
                       console.log("Revealed losing bet for another player");
