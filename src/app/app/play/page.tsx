@@ -124,7 +124,10 @@ export default function PlayPage() {
 
   // Scroll to spinner when bet starts
   const scrollToSpinner = useCallback(() => {
-    spinnerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Small delay to ensure DOM is ready after state updates
+    setTimeout(() => {
+      spinnerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
   }, []);
 
   // Prevent hydration mismatch
