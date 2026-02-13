@@ -71,7 +71,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto pt-20 sm:pt-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-[100] p-4 overflow-y-auto pt-20 sm:pt-4">
       <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">Get CLAW</h2>
