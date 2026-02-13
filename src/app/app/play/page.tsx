@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance, useChainId, useSwitchChain } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatEther, parseEther, decodeEventLog } from "viem";
-import { Dice5, Volume2, VolumeX, Info, Clock, Zap, Coins } from "lucide-react";
+import { Volume2, VolumeX, Info, Clock, Zap, Coins } from "lucide-react";
 import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { CONTRACTS, CLAWDICE_ABI, ERC20_ABI } from "@/lib/contracts";
 import { SwapModal } from "@/components/SwapModal";
+import { SpinWheel } from "@/components/SpinWheel";
 import { useSponsoredClaim } from "@/hooks/useSponsoredClaim";
 import { useAutoReveal } from "@/hooks/useAutoReveal";
 import clsx from "clsx";
@@ -31,8 +32,9 @@ export default function PlayPage() {
   const [betState, setBetState] = useState<BetState>("idle");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isRolling, setIsRolling] = useState(false);
-  const [lastResult, setLastResult] = useState<{ won: boolean; payout: bigint } | null>(null);
+  const [lastResult, setLastResult] = useState<{ won: boolean; payout: bigint; resultPosition?: number } | null>(null);
   const [currentBetId, setCurrentBetId] = useState<bigint | null>(null);
+  const [resultPosition, setResultPosition] = useState<number | null>(null);
   const [useETH, setUseETH] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -162,6 +164,34 @@ export default function PlayPage() {
     
     return { msg: shortMsg, details: fullMessage };
   };
+
+  // Compute result position from blockhash (replicates contract logic)
+  const computeResultPosition = useCallback(async (betId: bigint, betBlockNumber: bigint): Promise<number> => {
+    if (!publicClient) return 50; // Fallback
+    
+    try {
+      const resultBlock = betBlockNumber + BigInt(1);
+      const block = await publicClient.getBlock({ blockNumber: resultBlock });
+      
+      if (!block?.hash) return 50;
+      
+      // Replicate: keccak256(abi.encodePacked(betId, blockhash))
+      const { keccak256, encodePacked } = await import("viem");
+      const randomResult = BigInt(keccak256(encodePacked(["uint256", "bytes32"], [betId, block.hash])));
+      
+      // Scale to 0-100 range (same as contract)
+      const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+      const E18 = BigInt("1000000000000000000");
+      const scaleFactor = MAX_UINT256 / E18;
+      const scaledResult = randomResult / scaleFactor;
+      
+      // Convert to percentage
+      return Number((scaledResult * BigInt(10000)) / E18) / 100;
+    } catch (err) {
+      console.error("Failed to compute result position:", err);
+      return 50;
+    }
+  }, [publicClient]);
 
   // Handle transaction errors - reset state
   useEffect(() => {
@@ -311,7 +341,16 @@ export default function PlayPage() {
                   const { player, payout } = decoded.args as { betId: bigint; player: `0x${string}`; payout: bigint };
                   // Only show success if this was our bet
                   if (player.toLowerCase() === address?.toLowerCase()) {
-                    setLastResult({ won: true, payout });
+                    // Compute result position for visualization
+                    const betInfo = await publicClient.readContract({
+                      address: CONTRACTS.baseSepolia.clawdice,
+                      abi: CLAWDICE_ABI,
+                      functionName: "getBet",
+                      args: [currentBetId],
+                    }) as { blockNumber: bigint };
+                    const position = await computeResultPosition(currentBetId, betInfo.blockNumber);
+                    setResultPosition(position);
+                    setLastResult({ won: true, payout, resultPosition: position });
                     setBetState("won");
                     setIsRolling(false);
                     refetchBalance();
@@ -321,6 +360,7 @@ export default function PlayPage() {
                     console.log("Revealed bet for another player:", player);
                     setBetState("idle");
                     setIsRolling(false);
+                    setResultPosition(null);
                     return;
                   }
                 }
@@ -335,10 +375,13 @@ export default function PlayPage() {
                       abi: CLAWDICE_ABI,
                       functionName: "getBet",
                       args: [currentBetId],
-                    }) as { player: `0x${string}` };
+                    }) as { player: `0x${string}`; blockNumber: bigint };
                     
                     if (betData.player.toLowerCase() === address?.toLowerCase()) {
-                      setLastResult({ won: false, payout: BigInt(0) });
+                      // Compute result position for visualization
+                      const position = await computeResultPosition(currentBetId, betData.blockNumber);
+                      setResultPosition(position);
+                      setLastResult({ won: false, payout: BigInt(0), resultPosition: position });
                       setBetState("lost");
                       setIsRolling(false);
                       refetchBalance();
@@ -346,6 +389,7 @@ export default function PlayPage() {
                       console.log("Revealed losing bet for another player");
                       setBetState("idle");
                       setIsRolling(false);
+                      setResultPosition(null);
                     }
                     return;
                   }
@@ -425,6 +469,7 @@ export default function PlayPage() {
   const handleReset = () => {
     setBetState("idle");
     setLastResult(null);
+    setResultPosition(null);
     setCurrentBetId(null);
     resetWrite();
   };
@@ -452,7 +497,7 @@ export default function PlayPage() {
         {/* Revealing in progress */}
         {revealingBets.size > 0 && (
           <div className="glass rounded-xl p-3 flex items-center gap-3 shadow-lg animate-pulse">
-            <Dice5 className="w-5 h-5 text-accent animate-spin" />
+            <Zap className="w-5 h-5 text-accent animate-pulse" />
             <span className="text-sm text-foreground">
               Revealing {revealingBets.size} pending bet{revealingBets.size > 1 ? "s" : ""}...
             </span>
@@ -513,27 +558,16 @@ export default function PlayPage() {
 
         {/* Main Game Card */}
         <div className="card-kawaii p-6">
-          {/* Dice Display */}
+          {/* Spin Wheel Display */}
           <div className="flex justify-center mb-6">
-            <div
-              className={clsx(
-                "w-28 h-28 md:w-36 md:h-36 rounded-2xl flex items-center justify-center transition-all",
-                betState === "won" && "bg-mint/30",
-                betState === "lost" && "bg-claw/20",
-                betState === "idle" && "bg-primary/10",
-                (betState === "waiting" || betState === "claiming") && "bg-accent/20"
-              )}
-            >
-              <Dice5
-                className={clsx(
-                  "w-16 h-16 md:w-20 md:h-20 transition-colors",
-                  betState === "won" && "text-mint-dark",
-                  betState === "lost" && "text-claw",
-                  betState === "idle" && "text-primary",
-                  isRolling && "animate-spin text-accent"
-                )}
-              />
-            </div>
+            <SpinWheel
+              winChance={odds}
+              houseEdge={1}
+              isSpinning={isRolling}
+              resultPosition={resultPosition}
+              size={180}
+              onSpinComplete={() => setIsRolling(false)}
+            />
           </div>
 
           {/* Result Display */}
@@ -549,7 +583,21 @@ export default function PlayPage() {
               </p>
               {betState === "won" && lastResult.payout > 0n && (
                 <p className="text-lg text-mint-dark mt-1">
-                  +{Number(formatEther(lastResult.payout)).toLocaleString()} CLAW
+                  +{(() => {
+                    const val = Number(formatEther(lastResult.payout));
+                    if (val >= 1) return val.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                    if (val >= 0.01) return val.toFixed(4);
+                    if (val >= 0.0001) return val.toFixed(6);
+                    return val.toFixed(8);
+                  })()} CLAW
+                </p>
+              )}
+              {lastResult.resultPosition !== undefined && (
+                <p className="text-sm text-foreground/60 mt-2">
+                  Result: {lastResult.resultPosition.toFixed(2)}% 
+                  {betState === "won" 
+                    ? ` < ${(odds * 0.99).toFixed(2)}% threshold` 
+                    : ` ≥ ${(odds * 0.99).toFixed(2)}% threshold`}
                 </p>
               )}
               <button
@@ -619,7 +667,7 @@ export default function PlayPage() {
           )}
           {betState === "claiming" && (
             <div className="text-center mb-6 text-primary-dark">
-              <Dice5 className="w-5 h-5 mx-auto mb-1 animate-spin" />
+              <Zap className="w-5 h-5 mx-auto mb-1 animate-pulse" />
               <p className="text-sm">Revealing result...</p>
             </div>
           )}
@@ -797,8 +845,8 @@ export default function PlayPage() {
                   disabled={!amount || isPending || isConfirming}
                   className="w-full btn-accent rounded-full py-3 font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  <Dice5 className="w-5 h-5" />
-                  {isPending || isConfirming ? "Processing..." : "Roll the Dice"}
+                  <Zap className="w-5 h-5" />
+                  {isPending || isConfirming ? "Processing..." : "Spin to Win"}
                 </button>
               )}
             </>
