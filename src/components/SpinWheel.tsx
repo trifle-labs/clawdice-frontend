@@ -24,11 +24,10 @@ export function SpinWheel({
   size = 200,
   onSpinComplete,
 }: SpinWheelProps) {
-  // Use state for rotation so React re-renders with new transform
   const [rotation, setRotation] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [hasLanded, setHasLanded] = useState(false);
   const animationFrameRef = useRef<number>();
-  const rotationRef = useRef(0);
 
   const adjustedWinChance = winChance * (1 - houseEdge / 100);
   const greenEndDegrees = (adjustedWinChance / 100) * 360;
@@ -36,12 +35,13 @@ export function SpinWheel({
 
   // Continuous spin while waiting
   useEffect(() => {
-    if (isSpinning && resultPosition === null) {
-      setIsAnimating(false); // Disable CSS transition during continuous spin
+    if (isSpinning && resultPosition === null && !hasLanded) {
+      setIsAnimating(false);
+      let rot = rotation;
       
       const spin = () => {
-        rotationRef.current += 8;
-        setRotation(rotationRef.current);
+        rot += 8;
+        setRotation(rot);
         animationFrameRef.current = requestAnimationFrame(spin);
       };
       animationFrameRef.current = requestAnimationFrame(spin);
@@ -52,55 +52,51 @@ export function SpinWheel({
         }
       };
     }
-  }, [isSpinning, resultPosition]);
+  }, [isSpinning, resultPosition, hasLanded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Land on result
   useEffect(() => {
-    if (resultPosition !== null && isSpinning) {
-      // Cancel continuous spin
+    if (resultPosition !== null && isSpinning && !hasLanded) {
+      setHasLanded(true);
+      
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
       
-      // Get current rotation and calculate final
-      const currentRot = rotationRef.current;
-      const currentAngle = ((currentRot % 360) + 360) % 360;
-      
-      // Calculate how much more to rotate to reach target
-      // Add 3 full spins for visual effect
-      let delta = targetDegrees - currentAngle;
-      if (delta < 0) delta += 360; // Always go forward
-      const finalRotation = currentRot + 3 * 360 + delta;
+      // Just animate directly to the target - 3 full spins + target angle
+      const finalRotation = 3 * 360 + targetDegrees;
       
       console.log("SpinWheel landing:", { 
         resultPosition,
         targetDegrees,
-        currentRot,
-        currentAngle,
-        delta,
         finalRotation,
-        finalAngle: finalRotation % 360,
       });
       
-      // Enable CSS transition and animate to final position
-      setIsAnimating(true);
-      setRotation(finalRotation);
+      // Force a sync: disable transition, set to 0, then animate
+      setIsAnimating(false);
+      setRotation(0);
       
-      // Call onSpinComplete after animation
-      setTimeout(() => {
-        rotationRef.current = finalRotation;
-        setIsAnimating(false);
-        onSpinComplete?.();
-      }, 3050);
+      // Wait for next frame to apply the transition
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsAnimating(true);
+          setRotation(finalRotation);
+          
+          setTimeout(() => {
+            setIsAnimating(false);
+            onSpinComplete?.();
+          }, 3050);
+        });
+      });
     }
-  }, [resultPosition, isSpinning, targetDegrees, onSpinComplete]);
+  }, [resultPosition, isSpinning, targetDegrees, onSpinComplete, hasLanded]);
 
-  // Reset when not spinning
+  // Reset when starting fresh
   useEffect(() => {
     if (!isSpinning && resultPosition === null) {
-      rotationRef.current = 0;
       setRotation(0);
       setIsAnimating(false);
+      setHasLanded(false);
     }
   }, [isSpinning, resultPosition]);
 
