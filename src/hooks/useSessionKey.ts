@@ -77,17 +77,29 @@ export function useSessionKey() {
   useEffect(() => {
     if (typeof window === "undefined" || !address) return;
 
+    console.log("[useSessionKey] Loading session from localStorage for", address);
+
     const storedKey = localStorage.getItem(SESSION_KEY_STORAGE);
     const storedSmartAccount = localStorage.getItem(SESSION_SMART_ACCOUNT_STORAGE);
     const storedExpires = localStorage.getItem(SESSION_EXPIRES_STORAGE);
     const storedPlayer = localStorage.getItem(SESSION_PLAYER_STORAGE);
 
+    console.log("[useSessionKey] Stored data:", { 
+      hasKey: !!storedKey, 
+      smartAccount: storedSmartAccount, 
+      expires: storedExpires, 
+      player: storedPlayer 
+    });
+
     if (storedKey && storedSmartAccount && storedExpires && storedPlayer) {
       const expiresAt = parseInt(storedExpires);
       const now = Math.floor(Date.now() / 1000);
 
+      console.log("[useSessionKey] Checking validity:", { expiresAt, now, isValid: expiresAt > now, playerMatch: storedPlayer.toLowerCase() === address?.toLowerCase() });
+
       // Check if session is still valid and for the current user
       if (expiresAt > now && storedPlayer.toLowerCase() === address?.toLowerCase()) {
+        console.log("[useSessionKey] Session valid, restoring state");
         setState((prev) => ({
           ...prev,
           eoaPrivateKey: storedKey as Hex,
@@ -96,8 +108,11 @@ export function useSessionKey() {
           isActive: true,
         }));
       } else {
+        console.log("[useSessionKey] Session invalid or expired, clearing");
         clearLocalStorage();
       }
+    } else {
+      console.log("[useSessionKey] No stored session found");
     }
   }, [address]);
 
@@ -107,6 +122,7 @@ export function useSessionKey() {
     if (!smartAccount || !address || !publicClient) return;
 
     const verifySession = async () => {
+      console.log("[useSessionKey] Verifying session on-chain:", { player: address, sessionKey: smartAccount });
       try {
         const isValid = await publicClient.readContract({
           address: CONTRACTS.baseSepolia.clawdice,
@@ -115,12 +131,15 @@ export function useSessionKey() {
           args: [address, smartAccount],
         });
 
+        console.log("[useSessionKey] On-chain verification result:", isValid);
+
         if (!isValid) {
+          console.log("[useSessionKey] Session invalid on-chain, clearing local state");
           setState((prev) => ({ ...prev, isActive: false }));
           clearLocalStorage();
         }
       } catch (err) {
-        console.error("Failed to verify session:", err);
+        console.error("[useSessionKey] Failed to verify session:", err);
       }
     };
 
@@ -137,7 +156,10 @@ export function useSessionKey() {
   // Create a new session - registers the SMART ACCOUNT address as session key
   const createSession = useCallback(
     async (durationHours: number = 24, maxBetAmount: bigint = parseEther("1000")) => {
+      console.log("[useSessionKey] createSession called", { durationHours, maxBetAmount: maxBetAmount.toString() });
+      
       if (!address || !publicClient) {
+        console.log("[useSessionKey] No address or publicClient");
         setState((prev) => ({ ...prev, error: "Wallet not connected" }));
         return false;
       }
@@ -148,8 +170,10 @@ export function useSessionKey() {
         // Generate ephemeral EOA key (this owns the smart account)
         const privateKey = generatePrivateKey();
         const ephemeralAccount = privateKeyToAccount(privateKey);
+        console.log("[useSessionKey] Generated ephemeral EOA:", ephemeralAccount.address);
 
         // Compute the smart account address - THIS is what we register as session key
+        console.log("[useSessionKey] Computing smart account address...");
         const simpleAccount = await toSimpleSmartAccount({
           client: publicClient,
           owner: ephemeralAccount,
@@ -160,9 +184,11 @@ export function useSessionKey() {
         });
 
         const smartAccountAddress = simpleAccount.address;
+        console.log("[useSessionKey] Smart account address:", smartAccountAddress);
 
         // Calculate expiry
         const expiresAt = BigInt(Math.floor(Date.now() / 1000) + durationHours * 3600);
+        console.log("[useSessionKey] Expiry:", expiresAt.toString());
 
         // Get current nonce from contract
         const nonce = await publicClient.readContract({
@@ -171,8 +197,10 @@ export function useSessionKey() {
           functionName: "getSessionNonce",
           args: [address],
         });
+        console.log("[useSessionKey] Nonce:", nonce.toString());
 
         // Sign EIP-712 typed data - authorizing the SMART ACCOUNT as session key
+        console.log("[useSessionKey] Requesting EIP-712 signature...");
         const signature = await signTypedDataAsync({
           domain: DOMAIN,
           types: SESSION_TYPES,
@@ -185,25 +213,32 @@ export function useSessionKey() {
             nonce,
           },
         });
+        console.log("[useSessionKey] Signature obtained");
 
         // Submit to contract
+        console.log("[useSessionKey] Submitting createSession tx...");
         const txHash = await writeContractAsync({
           address: CONTRACTS.baseSepolia.clawdice,
           abi: CLAWDICE_ABI,
           functionName: "createSession",
           args: [smartAccountAddress, expiresAt, maxBetAmount, signature],
         });
+        console.log("[useSessionKey] Tx submitted:", txHash);
 
         // Wait for confirmation
+        console.log("[useSessionKey] Waiting for confirmation...");
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        console.log("[useSessionKey] Receipt:", receipt.status);
 
         if (receipt.status === "success") {
           // Store in localStorage
+          console.log("[useSessionKey] Tx success, storing to localStorage...");
           localStorage.setItem(SESSION_KEY_STORAGE, privateKey);
           localStorage.setItem(SESSION_SMART_ACCOUNT_STORAGE, smartAccountAddress);
           localStorage.setItem(SESSION_EXPIRES_STORAGE, expiresAt.toString());
           localStorage.setItem(SESSION_PLAYER_STORAGE, address);
-
+          
+          console.log("[useSessionKey] localStorage updated, setting state...");
           setState({
             eoaPrivateKey: privateKey,
             smartAccountAddress,
@@ -213,12 +248,14 @@ export function useSessionKey() {
             error: null,
           });
 
+          console.log("[useSessionKey] Session created successfully!");
           return true;
         } else {
+          console.log("[useSessionKey] Tx failed with status:", receipt.status);
           throw new Error("Transaction failed");
         }
       } catch (err) {
-        console.error("Failed to create session:", err);
+        console.error("[useSessionKey] Failed to create session:", err);
         const errorMsg = err instanceof Error ? err.message : "Failed to create session";
         setState((prev) => ({
           ...prev,

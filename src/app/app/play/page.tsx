@@ -86,24 +86,39 @@ export default function PlayPage() {
   // Session key / skip wallet popup - sync with localStorage and session state
   const [skipWalletPopup, setSkipWalletPopup] = useState(false);
   
+  // Debug: log session state changes
+  useEffect(() => {
+    console.log("[PlayPage] Session state changed:", { hasSession, skipWalletPopup, isCreatingSession, sessionError });
+  }, [hasSession, skipWalletPopup, isCreatingSession, sessionError]);
+  
   // Load skipWalletPopup preference from localStorage and sync with session state
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = localStorage.getItem("clawdice_skip_wallet_popup");
+    console.log("[PlayPage] Loading skipWalletPopup preference:", { stored, hasSession });
+    
     if (stored === "true" && hasSession) {
+      console.log("[PlayPage] Restoring skipWalletPopup=true (stored + hasSession)");
       setSkipWalletPopup(true);
-    } else if (hasSession) {
-      // Session exists but preference not set - default to using it
+    } else if (hasSession && stored !== "false") {
+      // Session exists but preference not explicitly set to false - default to using it
+      console.log("[PlayPage] Session exists, defaulting skipWalletPopup=true");
       setSkipWalletPopup(true);
       localStorage.setItem("clawdice_skip_wallet_popup", "true");
     }
   }, [hasSession]);
   
-  // Persist preference changes
+  // Persist preference changes (but not on initial mount)
+  const [didMount, setDidMount] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!didMount) {
+      setDidMount(true);
+      return;
+    }
+    console.log("[PlayPage] Persisting skipWalletPopup:", skipWalletPopup);
     localStorage.setItem("clawdice_skip_wallet_popup", skipWalletPopup ? "true" : "false");
-  }, [skipWalletPopup]);
+  }, [skipWalletPopup, didMount]);
 
   // Scroll to spinner when bet starts
   const scrollToSpinner = useCallback(() => {
@@ -999,17 +1014,23 @@ export default function PlayPage() {
                 <div className="mb-4">
                   <button
                     onClick={async () => {
+                      console.log("[PlayPage] Toggle clicked:", { hasSession, skipWalletPopup });
                       if (hasSession) {
                         // Session exists - just toggle the preference
+                        console.log("[PlayPage] Session exists, toggling preference to:", !skipWalletPopup);
                         setSkipWalletPopup(!skipWalletPopup);
                       } else if (!skipWalletPopup) {
                         // No session, turning on - create session first
+                        console.log("[PlayPage] No session, creating new session...");
                         const success = await createSession(24, parseEther("1000"));
+                        console.log("[PlayPage] createSession returned:", success);
                         if (success) {
+                          console.log("[PlayPage] Setting skipWalletPopup=true after success");
                           setSkipWalletPopup(true);
                         }
                       } else {
                         // No session but toggle is on (shouldn't happen) - turn off
+                        console.log("[PlayPage] Inconsistent state, turning off");
                         setSkipWalletPopup(false);
                       }
                     }}
