@@ -438,11 +438,13 @@ export default function PlayPage() {
 
   const needsApproval = useCallback(() => {
     if (useETH) return false;
-    if (!amount || !allowance) return true;
+    // Only show approval if user has entered an amount that exceeds allowance
+    if (!amount || parseFloat(amount) === 0) return false;
+    if (!allowance) return true;
     try {
       return parseEther(amount) > allowance;
     } catch {
-      return true;
+      return false;
     }
   }, [amount, allowance, useETH]);
 
