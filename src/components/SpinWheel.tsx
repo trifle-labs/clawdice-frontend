@@ -54,7 +54,7 @@ export function SpinWheel({
     if (isSpinning && resultPosition === null && !isLandingRef.current) {
       let rotation = currentRotation;
       const spin = () => {
-        rotation += 6; // Speed of continuous spin (degrees per frame)
+        rotation += 12; // Fast spin while waiting (degrees per frame)
         setCurrentRotation(rotation);
         controls.set({ rotate: rotation });
         animationFrameRef.current = requestAnimationFrame(spin);
@@ -79,9 +79,9 @@ export function SpinWheel({
         cancelAnimationFrame(animationFrameRef.current);
       }
       
-      // Calculate final rotation: complete 2-3 more full spins + land on result
+      // Calculate final rotation: complete 3-5 more full spins + land on result
       const baseRotation = currentRotation;
-      const numSpins = 2 + Math.floor(Math.random() * 2); // 2 or 3 full spins
+      const numSpins = 3 + Math.floor(Math.random() * 3); // 3-5 full spins for drama
       const fullSpins = numSpins * 360; // MUST be multiple of 360 to not affect landing
       
       // The pointer points UP (0°), wheel 0% is at TOP
@@ -107,8 +107,11 @@ export function SpinWheel({
       controls.start({
         rotate: finalRotation,
         transition: {
-          duration: 3,
-          ease: [0.2, 0.8, 0.2, 1], // Strong deceleration at end
+          type: "spring",
+          stiffness: 15,
+          damping: 8,
+          mass: 1.5,
+          // This creates: fast spin → dramatic slowdown → slight overshoot → settle
         },
       }).then(() => {
         setCurrentRotation(finalRotation);
