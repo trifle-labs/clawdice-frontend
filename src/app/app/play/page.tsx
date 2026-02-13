@@ -15,7 +15,7 @@ import { useSessionKey } from "@/hooks/useSessionKey";
 import clsx from "clsx";
 import { X, Check, AlertCircle, ToggleLeft, ToggleRight } from "lucide-react";
 
-type BetState = "idle" | "approving" | "placing" | "waiting" | "claiming" | "won" | "lost";
+type BetState = "idle" | "placing" | "waiting" | "claiming" | "won" | "lost";
 
 type BetStrategy = "flat" | "martingale" | "antiMartingale" | "fibonacci" | "dalembert" | "kelly";
 
@@ -64,6 +64,9 @@ export default function PlayPage() {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const spinnerRef = useRef<HTMLDivElement>(null);
+  
+  // Approval state (separate from bet state)
+  const [isApproving, setIsApproving] = useState(false);
   
   // Advanced & Auto mode state
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -167,7 +170,7 @@ export default function PlayPage() {
   }, [revealedBets.length, refetchBalance, queryClient]);
 
   // Write functions
-  const { writeContract, data: txHash, isPending, reset: resetWrite, error: writeError } = useWriteContract();
+  const { writeContract, writeContractAsync, data: txHash, isPending, reset: resetWrite, error: writeError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess, data: receipt, error: txError } = useWaitForTransactionReceipt({ hash: txHash });
 
   // Calculate payout
@@ -291,16 +294,10 @@ export default function PlayPage() {
     }
   }, [writeError, txError, resetWrite]);
 
-  // Handle transaction success
+  // Handle transaction success (for bet placing/claiming only - approval handled separately)
   useEffect(() => {
     if (isSuccess && receipt) {
-      if (betState === "approving") {
-        // Refetch allowance to update UI immediately
-        refetchAllowance();
-        queryClient.invalidateQueries({ queryKey: ["readContract"] });
-        setBetState("idle");
-        resetWrite();
-      } else if (betState === "placing") {
+      if (betState === "placing") {
         const betId = parseBetId(receipt);
         if (betId) {
           setCurrentBetId(betId);
@@ -526,17 +523,49 @@ export default function PlayPage() {
   }, [amount, allowance, useETH]);
 
   const handleApprove = async () => {
-    if (!address) return;
-    setBetState("approving");
+    if (!address || !publicClient) return;
+    setIsApproving(true);
+    setErrorMsg(null);
 
-    // Approve unlimited so user only needs to do this once
-    const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-    writeContract({
-      address: CONTRACTS.baseSepolia.clawToken,
-      abi: ERC20_ABI,
-      functionName: "approve",
-      args: [CONTRACTS.baseSepolia.clawdice, MAX_UINT256],
-    });
+    try {
+      // Approve unlimited so user only needs to do this once
+      const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+      const hash = await writeContractAsync({
+        address: CONTRACTS.baseSepolia.clawToken,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [CONTRACTS.baseSepolia.clawdice, MAX_UINT256],
+      });
+
+      // Wait for tx confirmation
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      
+      if (receipt.status === "success") {
+        // Poll until allowance is updated (RPC sync lag)
+        let attempts = 0;
+        const maxAttempts = 10;
+        while (attempts < maxAttempts) {
+          await new Promise(r => setTimeout(r, 1000));
+          const { data: newAllowance } = await refetchAllowance();
+          if (newAllowance && newAllowance > BigInt(0)) {
+            console.log("[Approve] Allowance updated:", newAllowance.toString());
+            break;
+          }
+          attempts++;
+          console.log("[Approve] Polling allowance, attempt", attempts);
+        }
+        queryClient.invalidateQueries({ queryKey: ["readContract"] });
+      }
+    } catch (err) {
+      console.error("[Approve] Error:", err);
+      const msg = err instanceof Error ? err.message : "Approval failed";
+      if (!msg.includes("rejected")) {
+        setErrorMsg(msg);
+      }
+    } finally {
+      setIsApproving(false);
+      resetWrite();
+    }
   };
 
   const handlePlaceBet = async () => {
@@ -797,12 +826,6 @@ export default function PlayPage() {
           )}
 
           {/* Status Messages */}
-          {betState === "approving" && (
-            <div className="text-center mb-6 text-foreground/60">
-              <Clock className="w-5 h-5 mx-auto mb-1 animate-spin" />
-              <p className="text-sm">Approving tokens...</p>
-            </div>
-          )}
           {betState === "placing" && (
             <div className="text-center mb-6 text-foreground/60">
               <Clock className="w-5 h-5 mx-auto mb-1 animate-spin" />
@@ -1074,12 +1097,10 @@ export default function PlayPage() {
               {needsApproval() ? (
                 <button
                   onClick={handleApprove}
-                  disabled={!amount || isPending || isConfirming || (betState as string) === "approving"}
+                  disabled={!amount || isApproving}
                   className="w-full btn-kawaii disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {(betState as string) === "approving" 
-                    ? (isConfirming ? "Confirming..." : "Waiting for wallet...")
-                    : (isPending ? "Approving..." : "Approve CLAW")}
+                  {isApproving ? "Approving..." : "Approve CLAW"}
                 </button>
               ) : (
                 <button
