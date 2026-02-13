@@ -35,6 +35,8 @@ export default function PlayPage() {
   const [useETH, setUseETH] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -125,22 +127,53 @@ export default function PlayPage() {
     return null;
   }, []);
 
+  // Parse error message for user-friendly display
+  const parseErrorMessage = (err: Error | null): { msg: string; details: string } => {
+    if (!err) return { msg: "Unknown error", details: "" };
+    
+    const fullMessage = err.message || String(err);
+    
+    // User rejected
+    if (fullMessage.includes("user rejected") || fullMessage.includes("User denied")) {
+      return { msg: "Transaction cancelled", details: "" };
+    }
+    
+    // Insufficient balance
+    if (fullMessage.includes("insufficient") || fullMessage.includes("exceeds balance")) {
+      return { msg: "Insufficient balance", details: fullMessage };
+    }
+    
+    // Contract revert reasons
+    const revertMatch = fullMessage.match(/reverted with reason string '([^']+)'/);
+    if (revertMatch) {
+      return { msg: revertMatch[1], details: fullMessage };
+    }
+    
+    // Custom error
+    const customErrorMatch = fullMessage.match(/reverted with custom error '([^']+)'/);
+    if (customErrorMatch) {
+      return { msg: `Contract error: ${customErrorMatch[1]}`, details: fullMessage };
+    }
+    
+    // Extract short message from long error
+    const shortMsgMatch = fullMessage.match(/^([^.!?\n]{1,100}[.!?]?)/);
+    const shortMsg = shortMsgMatch ? shortMsgMatch[1] : "Transaction failed";
+    
+    return { msg: shortMsg, details: fullMessage };
+  };
+
   // Handle transaction errors - reset state
   useEffect(() => {
     if (writeError || txError) {
       console.error("Transaction error:", writeError || txError);
       const err = writeError || txError;
-      const msg = err?.message?.includes("user rejected") 
-        ? "Transaction cancelled" 
-        : err?.message?.includes("insufficient") 
-        ? "Insufficient balance"
-        : "Transaction failed";
+      const { msg, details } = parseErrorMessage(err);
       setErrorMsg(msg);
+      setErrorDetails(details);
+      setShowErrorDetails(false);
       setBetState("idle");
       setIsRolling(false);
       resetWrite();
-      // Clear error after 5 seconds
-      setTimeout(() => setErrorMsg(null), 5000);
     }
   }, [writeError, txError, resetWrite]);
 
@@ -446,8 +479,38 @@ export default function PlayPage() {
 
           {/* Error Message */}
           {errorMsg && (
-            <div className="text-center mb-4 p-3 bg-red-100 border border-red-300 rounded-xl">
-              <p className="text-sm text-red-600 font-medium">{errorMsg}</p>
+            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <X className="w-4 h-4 text-red-600" />
+                  <p className="text-sm text-red-600 font-medium">{errorMsg}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setErrorMsg(null);
+                    setErrorDetails(null);
+                    setShowErrorDetails(false);
+                  }}
+                  className="text-red-400 hover:text-red-600 p-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {errorDetails && errorDetails !== errorMsg && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => setShowErrorDetails(!showErrorDetails)}
+                    className="text-xs text-red-500 hover:text-red-700 underline"
+                  >
+                    {showErrorDetails ? "Hide details" : "Show details"}
+                  </button>
+                  {showErrorDetails && (
+                    <pre className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800 overflow-x-auto max-h-32 overflow-y-auto whitespace-pre-wrap break-all">
+                      {errorDetails}
+                    </pre>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
