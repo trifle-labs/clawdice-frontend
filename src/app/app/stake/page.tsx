@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import { Vault, Info } from "lucide-react";
-import { ConnectKitButton } from "connectkit";
+import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { CONTRACTS, VAULT_ABI, ERC20_ABI } from "@/lib/contracts";
 
 export default function StakePage() {
   const { address, isConnected } = useAccount();
+  const { open: openWalletModal } = useWeb3Modal();
   const [activeTab, setActiveTab] = useState<"stake" | "unstake">("stake");
   const [amount, setAmount] = useState("");
 
@@ -169,7 +170,12 @@ export default function StakePage() {
             <div className="text-center py-8">
               <Vault className="w-16 h-16 text-primary mx-auto mb-4 opacity-50" />
               <p className="text-gray-400 mb-4">Connect your wallet to stake</p>
-              <ConnectKitButton />
+              <button
+                onClick={() => openWalletModal()}
+                className="px-6 py-3 bg-primary hover:bg-primary-dark text-white rounded-full font-bold transition-colors"
+              >
+                Connect Wallet
+              </button>
             </div>
           ) : (
             <>

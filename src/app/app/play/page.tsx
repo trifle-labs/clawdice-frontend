@@ -5,7 +5,7 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { useQueryClient } from "@tanstack/react-query";
 import { formatEther, parseEther, decodeEventLog } from "viem";
 import { Dice5, Volume2, VolumeX, Info, Clock, Zap, Coins } from "lucide-react";
-import { ConnectKitButton } from "connectkit";
+import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { CONTRACTS, CLAWDICE_ABI, ERC20_ABI } from "@/lib/contracts";
 import { SwapModal } from "@/components/SwapModal";
 import { useSponsoredClaim } from "@/hooks/useSponsoredClaim";
@@ -23,6 +23,7 @@ export default function PlayPage() {
   const { revealedBets, revealingBets, clearRevealed } = useAutoReveal();
   const chainId = useChainId();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
+  const { open: openWalletModal } = useWeb3Modal();
   const isWrongNetwork = isConnected && chainId !== 84532; // Base Sepolia
   const [mounted, setMounted] = useState(false);
   const [amount, setAmount] = useState("");
@@ -549,7 +550,12 @@ export default function PlayPage() {
             <div className="text-center py-6">
               <p className="text-foreground/60 mb-2 text-sm">Connect wallet to play</p>
               <p className="text-foreground/40 mb-4 text-xs">Requires Base Sepolia testnet</p>
-              <ConnectKitButton />
+              <button
+                onClick={() => openWalletModal()}
+                className="px-6 py-3 bg-primary hover:bg-primary-dark text-white rounded-full font-bold transition-colors"
+              >
+                Connect Wallet
+              </button>
             </div>
           ) : isWrongNetwork ? (
             <div className="text-center py-6">

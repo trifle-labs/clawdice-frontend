@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ConnectKitButton } from "connectkit";
+import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { useState } from "react";
 import { Menu, X, Coins } from "lucide-react";
 import { useChainId, useAccount, useReadContract } from "wagmi";
@@ -20,6 +20,7 @@ export function Header() {
   const [swapOpen, setSwapOpen] = useState(false);
   const chainId = useChainId();
   const { address, isConnected } = useAccount();
+  const { open } = useWeb3Modal();
   
   // Fetch CLAW balance
   const { data: clawBalance } = useReadContract({
@@ -100,7 +101,12 @@ export function Header() {
               </div>
             )}
             <div className="hidden sm:block">
-              <ConnectKitButton />
+              <button
+                onClick={() => open()}
+                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-full text-sm font-medium transition-colors"
+              >
+                {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : "Connect"}
+              </button>
             </div>
             {/* Mobile menu button */}
             <button
@@ -149,7 +155,12 @@ export function Header() {
             </div>
           )}
           <div>
-            <ConnectKitButton />
+            <button
+              onClick={() => { open(); setMenuOpen(false); }}
+              className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-full text-sm font-medium transition-colors w-full"
+            >
+              {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : "Connect Wallet"}
+            </button>
           </div>
         </div>
       )}
