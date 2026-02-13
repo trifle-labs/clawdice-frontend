@@ -749,8 +749,8 @@ export default function PlayPage() {
             />
           </div>
 
-          {/* Result Display */}
-          {(betState === "won" || betState === "lost") && lastResult && (
+          {/* Result Display - only show after wheel stops */}
+          {(betState === "won" || betState === "lost") && lastResult && !isRolling && (
             <div
               className={clsx(
                 "text-center mb-6 p-4 rounded-xl",
