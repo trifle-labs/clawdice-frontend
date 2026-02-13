@@ -194,12 +194,36 @@ export default function PlayPage() {
           setIsRolling(true);
         }
       } else if (betState === "claiming") {
-        const result = parseResult(receipt);
-        if (result) {
-          setLastResult(result);
-          setBetState(result.won ? "won" : "lost");
+        // Check if this was our bet before showing success screen
+        let isOurBet = true;
+        for (const log of receipt.logs) {
+          try {
+            const decoded = decodeEventLog({
+              abi: CLAWDICE_ABI,
+              data: log.data as `0x${string}`,
+              topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
+            });
+            if (decoded.eventName === "BetClaimed") {
+              const { player } = decoded.args as { player: `0x${string}` };
+              isOurBet = player.toLowerCase() === address?.toLowerCase();
+              break;
+            }
+          } catch {}
+        }
+        
+        if (isOurBet) {
+          const result = parseResult(receipt);
+          if (result) {
+            setLastResult(result);
+            setBetState(result.won ? "won" : "lost");
+            setIsRolling(false);
+            refetchBalance();
+          }
+        } else {
+          // Not our bet - silently reset
+          console.log("Claimed bet belongs to another player");
+          setBetState("idle");
           setIsRolling(false);
-          refetchBalance();
         }
       }
     }
@@ -274,7 +298,7 @@ export default function PlayPage() {
             });
             console.log("Sponsored claim confirmed:", receipt.status);
             
-            // Parse result from receipt
+            // Parse result from receipt - check if this bet was ours
             for (const log of receipt.logs) {
               try {
                 const decoded = decodeEventLog({
@@ -282,13 +306,49 @@ export default function PlayPage() {
                   data: log.data,
                   topics: log.topics,
                 });
+                // Check BetClaimed event which has the player address
+                if (decoded.eventName === "BetClaimed") {
+                  const { player, payout } = decoded.args as { betId: bigint; player: `0x${string}`; payout: bigint };
+                  // Only show success if this was our bet
+                  if (player.toLowerCase() === address?.toLowerCase()) {
+                    setLastResult({ won: true, payout });
+                    setBetState("won");
+                    setIsRolling(false);
+                    refetchBalance();
+                    return;
+                  } else {
+                    // Not our bet - just reset state silently
+                    console.log("Revealed bet for another player:", player);
+                    setBetState("idle");
+                    setIsRolling(false);
+                    return;
+                  }
+                }
                 if (decoded.eventName === "BetResolved") {
                   const { won, payout } = decoded.args as { won: boolean; payout: bigint };
-                  setLastResult({ won, payout });
-                  setBetState(won ? "won" : "lost");
-                  setIsRolling(false);
-                  refetchBalance();
-                  return;
+                  // If it was a loss, BetClaimed won't fire, but BetResolved will
+                  // For losses, we still want to show the result if it was our bet
+                  if (!won) {
+                    // Check if this bet was ours by reading bet data
+                    const betData = await publicClient.readContract({
+                      address: CONTRACTS.baseSepolia.clawdice,
+                      abi: CLAWDICE_ABI,
+                      functionName: "getBet",
+                      args: [currentBetId],
+                    }) as { player: `0x${string}` };
+                    
+                    if (betData.player.toLowerCase() === address?.toLowerCase()) {
+                      setLastResult({ won: false, payout: BigInt(0) });
+                      setBetState("lost");
+                      setIsRolling(false);
+                      refetchBalance();
+                    } else {
+                      console.log("Revealed losing bet for another player");
+                      setBetState("idle");
+                      setIsRolling(false);
+                    }
+                    return;
+                  }
                 }
               } catch {}
             }
