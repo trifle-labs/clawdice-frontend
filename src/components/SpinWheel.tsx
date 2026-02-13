@@ -189,6 +189,11 @@ export function SpinWheel({
           </div>
         </div>
       )}
+      
+      {/* Debug: show current rotation */}
+      <div className="absolute -bottom-6 left-0 right-0 text-center text-xs text-gray-500">
+        rot: {rotation.toFixed(0)}° → {(rotation % 360).toFixed(0)}° | target: {targetDegrees.toFixed(0)}°
+      </div>
     </div>
   );
 }
