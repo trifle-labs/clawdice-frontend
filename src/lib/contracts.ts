@@ -1,7 +1,7 @@
 import { Address } from "viem";
-import deployments from "./deployments.json";
+import deployments from "@trifle-labs/clawdice";
 
-// Contract addresses imported from clawdice repo deployments.json
+// Contract addresses imported from @trifle-labs/clawdice package
 export const CONTRACTS = {
   baseSepolia: {
     clawToken: deployments.baseSepolia.clawToken as Address,
