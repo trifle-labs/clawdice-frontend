@@ -179,7 +179,7 @@ export function SpinWheel({
         style={{ 
           transform: `rotate(${rotation}deg)`,
           transformOrigin: 'center center',
-          transition: isLandingAnimation ? 'transform 3s cubic-bezier(0.15, 0.85, 0.35, 1)' : 'none',
+          transition: isLandingAnimation ? 'transform 3s cubic-bezier(0.0, 0.0, 0.2, 1)' : 'none',
         }}
       >
         <svg width={size} height={size}>
