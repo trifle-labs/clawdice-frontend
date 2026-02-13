@@ -25,80 +25,81 @@ export function SpinWheel({
   onSpinComplete,
 }: SpinWheelProps) {
   const [rotation, setRotation] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [hasLanded, setHasLanded] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'spinning' | 'landing' | 'done'>('idle');
   const animationFrameRef = useRef<number>();
+  const spinRotationRef = useRef(0);
 
   const adjustedWinChance = winChance * (1 - houseEdge / 100);
   const greenEndDegrees = (adjustedWinChance / 100) * 360;
   const targetDegrees = resultPosition !== null ? (resultPosition / 100) * 360 : 0;
 
-  // Continuous spin while waiting
+  // Handle phase transitions
   useEffect(() => {
-    if (isSpinning && resultPosition === null && !hasLanded) {
-      setIsAnimating(false);
-      let rot = rotation;
-      
-      const spin = () => {
-        rot += 8;
-        setRotation(rot);
-        animationFrameRef.current = requestAnimationFrame(spin);
-      };
-      animationFrameRef.current = requestAnimationFrame(spin);
-      
-      return () => {
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-      };
+    if (isSpinning && resultPosition === null && phase === 'idle') {
+      setPhase('spinning');
+      spinRotationRef.current = 0;
+    } else if (resultPosition !== null && phase === 'spinning') {
+      setPhase('landing');
+    } else if (!isSpinning && resultPosition === null && phase !== 'idle') {
+      setPhase('idle');
+      setRotation(0);
+      spinRotationRef.current = 0;
     }
-  }, [isSpinning, resultPosition, hasLanded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isSpinning, resultPosition, phase]);
 
-  // Land on result
+  // Continuous spin animation
   useEffect(() => {
-    if (resultPosition !== null && isSpinning && !hasLanded) {
-      setHasLanded(true);
-      
+    if (phase !== 'spinning') return;
+    
+    const spin = () => {
+      spinRotationRef.current += 8;
+      setRotation(spinRotationRef.current);
+      animationFrameRef.current = requestAnimationFrame(spin);
+    };
+    animationFrameRef.current = requestAnimationFrame(spin);
+    
+    return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-      
-      // Just animate directly to the target - 3 full spins + target angle
-      const finalRotation = 3 * 360 + targetDegrees;
-      
-      console.log("SpinWheel landing:", { 
-        resultPosition,
-        targetDegrees,
-        finalRotation,
-      });
-      
-      // Force a sync: disable transition, set to 0, then animate
-      setIsAnimating(false);
-      setRotation(0);
-      
-      // Wait for next frame to apply the transition
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setIsAnimating(true);
-          setRotation(finalRotation);
-          
-          setTimeout(() => {
-            setIsAnimating(false);
-            onSpinComplete?.();
-          }, 3050);
-        });
-      });
-    }
-  }, [resultPosition, isSpinning, targetDegrees, onSpinComplete, hasLanded]);
+    };
+  }, [phase]);
 
-  // Reset when starting fresh
+  // Landing animation
   useEffect(() => {
-    if (!isSpinning && resultPosition === null) {
-      setRotation(0);
-      setIsAnimating(false);
-      setHasLanded(false);
+    if (phase !== 'landing') return;
+    
+    // Cancel any ongoing spin
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
     }
-  }, [isSpinning, resultPosition]);
+    
+    const finalRotation = 3 * 360 + targetDegrees;
+    
+    console.log("SpinWheel landing:", { 
+      resultPosition,
+      targetDegrees,
+      finalRotation,
+    });
+    
+    // Immediately set to 0 (no transition)
+    setRotation(0);
+    
+    // After a tick, start the landing animation
+    const timeoutId = setTimeout(() => {
+      setRotation(finalRotation);
+      
+      // Mark as done after animation completes
+      setTimeout(() => {
+        setPhase('done');
+        onSpinComplete?.();
+      }, 3000);
+    }, 50);
+    
+    return () => clearTimeout(timeoutId);
+  }, [phase, targetDegrees, resultPosition, onSpinComplete]);
+
+  const isLandingAnimation = phase === 'landing';
 
   const center = size / 2;
   const radius = size / 2 - 4;
@@ -165,7 +166,7 @@ export function SpinWheel({
         style={{ 
           transform: `rotate(${rotation}deg)`,
           transformOrigin: 'center center',
-          transition: isAnimating ? 'transform 3s cubic-bezier(0.15, 0.85, 0.35, 1)' : 'none',
+          transition: isLandingAnimation ? 'transform 3s cubic-bezier(0.15, 0.85, 0.35, 1)' : 'none',
         }}
       >
         <svg width={size} height={size}>
