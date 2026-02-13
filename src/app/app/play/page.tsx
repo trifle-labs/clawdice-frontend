@@ -825,7 +825,13 @@ export default function PlayPage() {
                 <div>
                   <p className="text-foreground/60 text-xs">Win</p>
                   <p className="font-bold text-accent-dark">
-                    {potentialPayout.toLocaleString(undefined, { maximumFractionDigits: 2 })} {useETH ? "CLAW" : "CLAW"}
+                    {(() => {
+                      if (potentialPayout === 0) return "0";
+                      if (potentialPayout >= 1) return potentialPayout.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                      if (potentialPayout >= 0.01) return potentialPayout.toFixed(4);
+                      if (potentialPayout >= 0.0001) return potentialPayout.toFixed(6);
+                      return potentialPayout.toFixed(8);
+                    })()} CLAW
                   </p>
                 </div>
               </div>
