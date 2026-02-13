@@ -263,39 +263,49 @@ export default function PlayPage() {
   useEffect(() => {
     if (betState === "waiting" && currentBetId && publicClient) {
       const waitAndClaim = async () => {
-        // Get the bet's block number and wait for next block
+        // Get the bet's block number with retry (RPC may not have synced yet)
+        let betBlockNumber: bigint | null = null;
+        
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            const betData = await publicClient.readContract({
+              address: CONTRACTS.baseSepolia.clawdice,
+              abi: CLAWDICE_ABI,
+              functionName: "getBet",
+              args: [currentBetId],
+            });
+            
+            const bet = betData as { 
+              player: `0x${string}`; 
+              amount: bigint; 
+              targetOddsE18: bigint; 
+              blockNumber: bigint; 
+              status: number;
+            };
+            
+            if (bet.blockNumber && bet.blockNumber > BigInt(0)) {
+              betBlockNumber = bet.blockNumber;
+              console.log("Bet data fetched:", { 
+                blockNumber: bet.blockNumber.toString(), 
+                attempt: attempt + 1 
+              });
+              break;
+            }
+            
+            // Bet not synced yet, wait and retry
+            console.log(`Bet not synced yet (attempt ${attempt + 1}/5), waiting 1s...`);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          } catch (err) {
+            console.error(`Error fetching bet (attempt ${attempt + 1}):`, err);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+        }
+        
+        // Wait for result block
         try {
-          const betData = await publicClient.readContract({
-            address: CONTRACTS.baseSepolia.clawdice,
-            abi: CLAWDICE_ABI,
-            functionName: "getBet",
-            args: [currentBetId],
-          });
-          
-          // Parse the returned tuple - viem returns it as an object with named properties
-          // Structure: { player, amount, targetOddsE18, blockNumber, status }
-          const bet = betData as { 
-            player: `0x${string}`; 
-            amount: bigint; 
-            targetOddsE18: bigint; 
-            blockNumber: bigint; 
-            status: number;
-          };
-          
-          console.log("Bet data:", JSON.stringify({
-            player: bet.player,
-            amount: bet.amount?.toString(),
-            blockNumber: bet.blockNumber?.toString(),
-            status: bet.status,
-          }));
-          
-          // Ensure we have a valid block number
-          if (!bet.blockNumber || bet.blockNumber === BigInt(0)) {
-            console.error("Invalid block number from getBet, waiting 5s as fallback");
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-          } else {
-            const targetBlock = bet.blockNumber + BigInt(1);
-            console.log("Bet placed at block", bet.blockNumber.toString(), "waiting for block", targetBlock.toString());
+          if (betBlockNumber) {
+            const targetBlock = betBlockNumber + BigInt(1);
+            console.log("Waiting for block", targetBlock.toString());
           
             // Poll until we're past the target block
             let currentBlock = await publicClient.getBlockNumber();
@@ -305,11 +315,14 @@ export default function PlayPage() {
               console.log("Current block:", currentBlock.toString());
             }
             console.log("Block ready, proceeding with claim");
+          } else {
+            // Couldn't get bet data after retries, use fallback delay
+            console.warn("Could not fetch bet data, using 3s fallback delay");
+            await new Promise((resolve) => setTimeout(resolve, 3000));
           }
         } catch (err) {
           console.error("Error waiting for block:", err);
-          // Fall back to simple timeout
-          await new Promise((resolve) => setTimeout(resolve, 5000));
+          await new Promise((resolve) => setTimeout(resolve, 3000));
         }
 
         setBetState("claiming");
