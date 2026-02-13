@@ -1,35 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
-import { motion, useAnimation } from "framer-motion";
+import { useEffect, useRef, useCallback, useState } from "react";
 
 interface SpinWheelProps {
-  /** Win probability as percentage (0-100) */
   winChance: number;
-  /** House edge as percentage (default 1%) */
   houseEdge?: number;
-  /** Whether the wheel is currently spinning */
   isSpinning: boolean;
-  /** The result position (0-100), null if not yet revealed */
   resultPosition: number | null;
-  /** Size in pixels */
   size?: number;
-  /** Called when spin animation completes */
   onSpinComplete?: () => void;
 }
 
 /**
  * SpinWheel - Visual wheel for provably fair dice outcomes
  * 
- * Layout (like a clock):
- * - 0% at 12 o'clock (top)
- * - 25% at 3 o'clock (right)
- * - 50% at 6 o'clock (bottom)
- * - 75% at 9 o'clock (left)
- * 
- * For 50% win chance:
- * - Green (win): RIGHT side (12→3→6)
- * - Red (lose): LEFT side (6→9→12)
+ * Layout: 0% = top, 25% = right, 50% = bottom, 75% = left (clockwise)
  */
 export function SpinWheel({
   winChance,
@@ -39,30 +24,24 @@ export function SpinWheel({
   size = 200,
   onSpinComplete,
 }: SpinWheelProps) {
-  const controls = useAnimation();
-  // Use ref for rotation to avoid async state issues
-  const rotationRef = useRef(0);
+  // Use state for rotation so React re-renders with new transform
+  const [rotation, setRotation] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
   const animationFrameRef = useRef<number>();
-  const isLandingRef = useRef(false);
+  const rotationRef = useRef(0);
 
-  // Adjusted win chance (accounting for house edge)
   const adjustedWinChance = winChance * (1 - houseEdge / 100);
-  
-  // Green section spans 0° to this angle
   const greenEndDegrees = (adjustedWinChance / 100) * 360;
-  
-  // Arrow target: convert result percentage to degrees
-  // 0% = 0° (top), 25% = 90° (right), 50% = 180° (bottom), 75% = 270° (left)
-  const targetDegrees = resultPosition !== null 
-    ? (resultPosition / 100) * 360
-    : 0;
+  const targetDegrees = resultPosition !== null ? (resultPosition / 100) * 360 : 0;
 
-  // Continuous spin while waiting for result
+  // Continuous spin while waiting
   useEffect(() => {
-    if (isSpinning && resultPosition === null && !isLandingRef.current) {
+    if (isSpinning && resultPosition === null) {
+      setIsAnimating(false); // Disable CSS transition during continuous spin
+      
       const spin = () => {
-        rotationRef.current += 12;
-        controls.set({ rotate: rotationRef.current });
+        rotationRef.current += 8;
+        setRotation(rotationRef.current);
         animationFrameRef.current = requestAnimationFrame(spin);
       };
       animationFrameRef.current = requestAnimationFrame(spin);
@@ -73,65 +52,57 @@ export function SpinWheel({
         }
       };
     }
-  }, [isSpinning, resultPosition, controls]);
+  }, [isSpinning, resultPosition]);
 
   // Land on result
   useEffect(() => {
-    if (resultPosition !== null && isSpinning && !isLandingRef.current) {
-      isLandingRef.current = true;
-      
+    if (resultPosition !== null && isSpinning) {
+      // Cancel continuous spin
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
       
-      // Simple approach: spin a few more times then land exactly on target
-      const numSpins = 3;
-      const finalRotation = numSpins * 360 + targetDegrees;
+      // Calculate final rotation: 3 full spins + target angle
+      const finalRotation = 3 * 360 + targetDegrees;
       
-      console.log("SpinWheel:", { 
+      console.log("SpinWheel landing:", { 
         resultPosition,
         targetDegrees,
         finalRotation,
-        expectedAngle: finalRotation % 360,
       });
       
-      // Stop current animation, wait a frame, then start landing animation
-      controls.stop();
-      requestAnimationFrame(() => {
-        controls.set({ rotate: 0 });
-        requestAnimationFrame(() => {
-          controls.start({
-            rotate: finalRotation,
-            transition: {
-              duration: 3,
-              ease: [0.15, 0.85, 0.35, 1],
-            },
-          }).then(() => {
-            rotationRef.current = finalRotation;
-            isLandingRef.current = false;
-            onSpinComplete?.();
-          });
-        });
-      });
+      // Enable CSS transition and set final rotation
+      setIsAnimating(true);
+      // Start from 0 for consistent animation
+      setRotation(0);
+      
+      // Use setTimeout to ensure the transition is applied after the reset
+      setTimeout(() => {
+        setRotation(finalRotation);
+      }, 50);
+      
+      // Call onSpinComplete after animation
+      setTimeout(() => {
+        rotationRef.current = finalRotation;
+        setIsAnimating(false);
+        onSpinComplete?.();
+      }, 3050);
     }
-  }, [resultPosition, isSpinning, targetDegrees, controls, onSpinComplete]);
+  }, [resultPosition, isSpinning, targetDegrees, onSpinComplete]);
 
-  // Reset on new spin
+  // Reset when not spinning
   useEffect(() => {
     if (!isSpinning && resultPosition === null) {
-      isLandingRef.current = false;
       rotationRef.current = 0;
-      controls.set({ rotate: 0 });
+      setRotation(0);
+      setIsAnimating(false);
     }
-  }, [isSpinning, resultPosition, controls]);
+  }, [isSpinning, resultPosition]);
 
   const center = size / 2;
   const radius = size / 2 - 4;
   const pointerLength = radius * 0.75;
 
-  /**
-   * Convert our angle (0° = top, clockwise) to SVG point
-   */
   const angleToPoint = useCallback((angleDeg: number, r: number) => {
     const rad = (angleDeg * Math.PI) / 180;
     return {
@@ -140,44 +111,23 @@ export function SpinWheel({
     };
   }, [center]);
 
-  /**
-   * Create SVG arc path from startAngle to endAngle (clockwise)
-   */
   const arcPath = useCallback((startAngle: number, endAngle: number, r: number) => {
     const start = angleToPoint(startAngle, r);
     const end = angleToPoint(endAngle, r);
-    const angleDiff = endAngle - startAngle;
-    const largeArc = angleDiff > 180 ? 1 : 0;
-    // sweep = 1 means clockwise in SVG (when Y points down)
+    const largeArc = endAngle - startAngle > 180 ? 1 : 0;
     return `M ${center} ${center} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
   }, [center, angleToPoint]);
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="drop-shadow-lg">
-        {/* Outer ring */}
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke="rgba(0,0,0,0.1)"
-          strokeWidth="2"
-        />
+        <circle cx={center} cy={center} r={radius} fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2" />
         
-        {/* Green (win) section: 0° to greenEndDegrees */}
-        <path
-          d={arcPath(0, greenEndDegrees, radius)}
-          fill="url(#greenGradient)"
-          className="drop-shadow-sm"
-        />
+        {/* Green (win) section */}
+        <path d={arcPath(0, greenEndDegrees, radius)} fill="url(#greenGradient)" />
         
-        {/* Red (lose) section: greenEndDegrees to 360° */}
-        <path
-          d={arcPath(greenEndDegrees, 360, radius)}
-          fill="url(#redGradient)"
-          className="drop-shadow-sm"
-        />
+        {/* Red (lose) section */}
+        <path d={arcPath(greenEndDegrees, 360, radius)} fill="url(#redGradient)" />
         
         <defs>
           <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -190,72 +140,36 @@ export function SpinWheel({
           </linearGradient>
         </defs>
         
-        {/* Quarter tick marks with labels */}
+        {/* Quarter labels */}
         {[0, 25, 50, 75].map((pct) => {
-          const p1 = angleToPoint((pct / 100) * 360, radius * 0.85);
-          const p2 = angleToPoint((pct / 100) * 360, radius * 0.95);
-          const pLabel = angleToPoint((pct / 100) * 360, radius * 0.7);
+          const p = angleToPoint((pct / 100) * 360, radius * 0.7);
           return (
-            <g key={pct}>
-              <line
-                x1={p1.x} y1={p1.y}
-                x2={p2.x} y2={p2.y}
-                stroke="rgba(255,255,255,0.8)"
-                strokeWidth="2"
-              />
-              <text
-                x={pLabel.x}
-                y={pLabel.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="rgba(0,0,0,0.5)"
-                fontSize="10"
-                fontWeight="bold"
-              >
-                {pct}
-              </text>
-            </g>
+            <text key={pct} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle"
+              fill="rgba(0,0,0,0.4)" fontSize="10" fontWeight="bold">
+              {pct}
+            </text>
           );
         })}
         
-        {/* Debug: Show where result SHOULD land (static marker on wheel) */}
-        {resultPosition !== null && (
-          <>
-            {(() => {
-              const angle = (resultPosition / 100) * 360;
-              const p = angleToPoint(angle, radius * 0.5);
-              return (
-                <circle
-                  cx={p.x}
-                  cy={p.y}
-                  r="6"
-                  fill="blue"
-                  stroke="white"
-                  strokeWidth="2"
-                />
-              );
-            })()}
-          </>
-        )}
+        {/* Debug: blue dot at target position */}
+        {resultPosition !== null && (() => {
+          const p = angleToPoint(targetDegrees, radius * 0.5);
+          return <circle cx={p.x} cy={p.y} r="6" fill="blue" stroke="white" strokeWidth="2" />;
+        })()}
       </svg>
       
-      {/* Spinning pointer */}
-      <motion.div
+      {/* Arrow - using CSS transform */}
+      <div 
         className="absolute inset-0 pointer-events-none"
-        animate={controls}
-        initial={{ rotate: 0 }}
-        style={{ transformOrigin: "center center" }}
+        style={{ 
+          transform: `rotate(${rotation}deg)`,
+          transformOrigin: 'center center',
+          transition: isAnimating ? 'transform 3s cubic-bezier(0.15, 0.85, 0.35, 1)' : 'none',
+        }}
       >
         <svg width={size} height={size}>
-          <line
-            x1={center}
-            y1={center}
-            x2={center}
-            y2={center - pointerLength}
-            stroke="#4A4A6A"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
+          <line x1={center} y1={center} x2={center} y2={center - pointerLength}
+            stroke="#4A4A6A" strokeWidth="4" strokeLinecap="round" />
           <polygon
             points={`${center},${center - pointerLength - 10} ${center - 7},${center - pointerLength + 2} ${center + 7},${center - pointerLength + 2}`}
             fill="#4A4A6A"
@@ -263,15 +177,13 @@ export function SpinWheel({
           <circle cx={center} cy={center} r="10" fill="#4A4A6A" />
           <circle cx={center} cy={center} r="5" fill="#B8A9E8" />
         </svg>
-      </motion.div>
+      </div>
       
       {/* Result badge */}
       {resultPosition !== null && !isSpinning && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className={`
-            px-3 py-1.5 rounded-full text-white text-sm font-bold shadow-lg
-            ${resultPosition < adjustedWinChance ? "bg-[#7DD4B0]" : "bg-[#E879A0]"}
-          `}>
+          <div className={`px-3 py-1.5 rounded-full text-white text-sm font-bold shadow-lg
+            ${resultPosition < adjustedWinChance ? "bg-[#7DD4B0]" : "bg-[#E879A0]"}`}>
             {resultPosition.toFixed(2)}%
           </div>
         </div>
@@ -280,13 +192,11 @@ export function SpinWheel({
   );
 }
 
-/** Convert scaled contract result to percentage */
 export function calculateResultPosition(scaledResult: bigint): number {
   const E18 = BigInt("1000000000000000000");
   return Number((scaledResult * BigInt(100)) / E18);
 }
 
-/** Convert raw hash to percentage */
 export function calculateResultFromRaw(randomResult: bigint): number {
   const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
   const E18 = BigInt("1000000000000000000");
