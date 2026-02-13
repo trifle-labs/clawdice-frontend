@@ -83,8 +83,27 @@ export default function PlayPage() {
   });
   const [autoBetStats, setAutoBetStats] = useState({ betsPlaced: 0, wins: 0, losses: 0, profit: BigInt(0) });
   
-  // Session key / skip wallet popup
+  // Session key / skip wallet popup - sync with localStorage and session state
   const [skipWalletPopup, setSkipWalletPopup] = useState(false);
+  
+  // Load skipWalletPopup preference from localStorage and sync with session state
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem("clawdice_skip_wallet_popup");
+    if (stored === "true" && hasSession) {
+      setSkipWalletPopup(true);
+    } else if (hasSession) {
+      // Session exists but preference not set - default to using it
+      setSkipWalletPopup(true);
+      localStorage.setItem("clawdice_skip_wallet_popup", "true");
+    }
+  }, [hasSession]);
+  
+  // Persist preference changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("clawdice_skip_wallet_popup", skipWalletPopup ? "true" : "false");
+  }, [skipWalletPopup]);
 
   // Scroll to spinner when bet starts
   const scrollToSpinner = useCallback(() => {
@@ -980,18 +999,18 @@ export default function PlayPage() {
                 <div className="mb-4">
                   <button
                     onClick={async () => {
-                      if (!skipWalletPopup && !hasSession) {
-                        // Turning on - create session first
+                      if (hasSession) {
+                        // Session exists - just toggle the preference
+                        setSkipWalletPopup(!skipWalletPopup);
+                      } else if (!skipWalletPopup) {
+                        // No session, turning on - create session first
                         const success = await createSession(24, parseEther("1000"));
                         if (success) {
                           setSkipWalletPopup(true);
                         }
-                      } else if (skipWalletPopup && hasSession) {
-                        // Turning off - revoke session
-                        setSkipWalletPopup(false);
-                        // Optionally revoke on-chain: await revokeSession();
                       } else {
-                        setSkipWalletPopup(!skipWalletPopup);
+                        // No session but toggle is on (shouldn't happen) - turn off
+                        setSkipWalletPopup(false);
                       }
                     }}
                     disabled={isCreatingSession}
@@ -1008,8 +1027,10 @@ export default function PlayPage() {
                           {isCreatingSession ? "Creating session..." : "Skip wallet popup"}
                         </p>
                         <p className="text-xs text-foreground/50">
-                          {hasSession && skipWalletPopup
-                            ? `Active for ${Math.floor(sessionTimeRemaining / 3600)}h ${Math.floor((sessionTimeRemaining % 3600) / 60)}m`
+                          {hasSession 
+                            ? (skipWalletPopup 
+                                ? `Active for ${Math.floor(sessionTimeRemaining / 3600)}h ${Math.floor((sessionTimeRemaining % 3600) / 60)}m`
+                                : "Session ready, click to enable")
                             : "Sign once, bet freely for 24h"}
                         </p>
                       </div>
