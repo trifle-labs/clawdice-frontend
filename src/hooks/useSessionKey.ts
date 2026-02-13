@@ -24,10 +24,11 @@ import { CONTRACTS, CLAWDICE_ABI } from "@/lib/contracts";
 const BUNDLER_URL =
   "https://api.developer.coinbase.com/rpc/v1/base-sepolia/0ISEtlczIQo4jhaa481HDPXlK5yrmfZW";
 
-const SESSION_KEY_STORAGE = "clawdice_session_key_v2";
-const SESSION_SMART_ACCOUNT_STORAGE = "clawdice_session_smart_account";
-const SESSION_EXPIRES_STORAGE = "clawdice_session_expires_v2";
-const SESSION_PLAYER_STORAGE = "clawdice_session_player_v2";
+// Storage keys (v4 = smart account as session key)
+const SESSION_KEY_STORAGE = "clawdice_session_key_v4";
+const SESSION_SMART_ACCOUNT_STORAGE = "clawdice_session_smart_account_v4";
+const SESSION_EXPIRES_STORAGE = "clawdice_session_expires_v4";
+const SESSION_PLAYER_STORAGE = "clawdice_session_player_v4";
 
 // EIP-712 domain for Clawdice
 const DOMAIN = {
@@ -49,8 +50,8 @@ const SESSION_TYPES = {
 } as const;
 
 interface SessionState {
-  sessionKeyPrivate: Hex | null;
-  smartAccountAddress: `0x${string}` | null;
+  eoaPrivateKey: Hex | null; // EOA that owns the smart account
+  smartAccountAddress: `0x${string}` | null; // This is the actual session key
   expiresAt: number | null;
   isActive: boolean;
   isCreating: boolean;
@@ -64,7 +65,7 @@ export function useSessionKey() {
   const { writeContractAsync, isPending: isWritePending } = useWriteContract();
 
   const [state, setState] = useState<SessionState>({
-    sessionKeyPrivate: null,
+    eoaPrivateKey: null,
     smartAccountAddress: null,
     expiresAt: null,
     isActive: false,
@@ -76,33 +77,28 @@ export function useSessionKey() {
   useEffect(() => {
     if (typeof window === "undefined" || !address) return;
 
-    const load = async () => {
-      const storedKey = localStorage.getItem(SESSION_KEY_STORAGE);
-      const storedSmartAccount = localStorage.getItem(SESSION_SMART_ACCOUNT_STORAGE);
-      const storedExpires = localStorage.getItem(SESSION_EXPIRES_STORAGE);
-      const storedPlayer = localStorage.getItem(SESSION_PLAYER_STORAGE);
+    const storedKey = localStorage.getItem(SESSION_KEY_STORAGE);
+    const storedSmartAccount = localStorage.getItem(SESSION_SMART_ACCOUNT_STORAGE);
+    const storedExpires = localStorage.getItem(SESSION_EXPIRES_STORAGE);
+    const storedPlayer = localStorage.getItem(SESSION_PLAYER_STORAGE);
 
-      if (storedKey && storedSmartAccount && storedExpires && storedPlayer) {
-        const expiresAt = parseInt(storedExpires);
-        const now = Math.floor(Date.now() / 1000);
+    if (storedKey && storedSmartAccount && storedExpires && storedPlayer) {
+      const expiresAt = parseInt(storedExpires);
+      const now = Math.floor(Date.now() / 1000);
 
-        // Check if session is still valid and for the current user
-        if (expiresAt > now && storedPlayer.toLowerCase() === address?.toLowerCase()) {
-          setState((prev) => ({
-            ...prev,
-            sessionKeyPrivate: storedKey as Hex,
-            smartAccountAddress: storedSmartAccount as `0x${string}`,
-            expiresAt,
-            isActive: true,
-          }));
-        } else {
-          // Clear expired or wrong-user session
-          clearLocalStorage();
-        }
+      // Check if session is still valid and for the current user
+      if (expiresAt > now && storedPlayer.toLowerCase() === address?.toLowerCase()) {
+        setState((prev) => ({
+          ...prev,
+          eoaPrivateKey: storedKey as Hex,
+          smartAccountAddress: storedSmartAccount as `0x${string}`,
+          expiresAt,
+          isActive: true,
+        }));
+      } else {
+        clearLocalStorage();
       }
-    };
-
-    load();
+    }
   }, [address]);
 
   // Verify session is still valid on-chain
@@ -120,7 +116,6 @@ export function useSessionKey() {
         });
 
         if (!isValid) {
-          // Session revoked or expired on-chain
           setState((prev) => ({ ...prev, isActive: false }));
           clearLocalStorage();
         }
@@ -139,7 +134,7 @@ export function useSessionKey() {
     localStorage.removeItem(SESSION_PLAYER_STORAGE);
   };
 
-  // Create a new session using smart account as the session key
+  // Create a new session - registers the SMART ACCOUNT address as session key
   const createSession = useCallback(
     async (durationHours: number = 24, maxBetAmount: bigint = parseEther("1000")) => {
       if (!address || !publicClient) {
@@ -150,12 +145,11 @@ export function useSessionKey() {
       setState((prev) => ({ ...prev, isCreating: true, error: null }));
 
       try {
-        // Generate ephemeral EOA key
+        // Generate ephemeral EOA key (this owns the smart account)
         const privateKey = generatePrivateKey();
         const ephemeralAccount = privateKeyToAccount(privateKey);
 
-        // Create a smart account from the ephemeral key
-        // This smart account address will be the session key
+        // Compute the smart account address - THIS is what we register as session key
         const simpleAccount = await toSimpleSmartAccount({
           client: publicClient,
           owner: ephemeralAccount,
@@ -167,7 +161,7 @@ export function useSessionKey() {
 
         const smartAccountAddress = simpleAccount.address;
 
-        // Calculate expiry (now + duration)
+        // Calculate expiry
         const expiresAt = BigInt(Math.floor(Date.now() / 1000) + durationHours * 3600);
 
         // Get current nonce from contract
@@ -185,7 +179,7 @@ export function useSessionKey() {
           primaryType: "CreateSession",
           message: {
             player: address,
-            sessionKey: smartAccountAddress, // Smart account address is the session key!
+            sessionKey: smartAccountAddress, // Smart account, not EOA!
             expiresAt,
             maxBetAmount,
             nonce,
@@ -211,7 +205,7 @@ export function useSessionKey() {
           localStorage.setItem(SESSION_PLAYER_STORAGE, address);
 
           setState({
-            sessionKeyPrivate: privateKey,
+            eoaPrivateKey: privateKey,
             smartAccountAddress,
             expiresAt: Number(expiresAt),
             isActive: true,
@@ -237,15 +231,15 @@ export function useSessionKey() {
     [address, publicClient, signTypedDataAsync, writeContractAsync]
   );
 
-  // Place bet using session key (sponsored via Paymaster)
+  // Place bet using session key (smart account submits, Paymaster sponsors)
   const placeBetWithSession = useCallback(
     async (amount: bigint, targetOddsE18: bigint): Promise<Hex | null> => {
-      if (!state.sessionKeyPrivate || !state.smartAccountAddress || !address) {
+      if (!state.eoaPrivateKey || !state.smartAccountAddress || !address) {
         throw new Error("No active session");
       }
 
       try {
-        const ephemeralAccount = privateKeyToAccount(state.sessionKeyPrivate);
+        const ephemeralAccount = privateKeyToAccount(state.eoaPrivateKey);
 
         const rpcClient = createPublicClient({
           chain: baseSepolia,
@@ -270,6 +264,11 @@ export function useSessionKey() {
           },
         });
 
+        // Sanity check: smart account address should match what we registered
+        if (simpleAccount.address.toLowerCase() !== state.smartAccountAddress.toLowerCase()) {
+          throw new Error("Smart account address mismatch");
+        }
+
         // Create smart account client with Paymaster
         const smartAccountClient = createSmartAccountClient({
           account: simpleAccount,
@@ -286,7 +285,7 @@ export function useSessionKey() {
         });
 
         // Send the sponsored transaction
-        // msg.sender will be the smart account address (which is the registered session key)
+        // msg.sender = smart account address = registered session key ✓
         const txHash = await smartAccountClient.sendTransaction({
           to: CONTRACTS.baseSepolia.clawdice,
           data: callData,
@@ -299,7 +298,7 @@ export function useSessionKey() {
         throw err;
       }
     },
-    [state.sessionKeyPrivate, state.smartAccountAddress, address]
+    [state.eoaPrivateKey, state.smartAccountAddress, address]
   );
 
   // Revoke session
@@ -316,7 +315,7 @@ export function useSessionKey() {
       clearLocalStorage();
 
       setState({
-        sessionKeyPrivate: null,
+        eoaPrivateKey: null,
         smartAccountAddress: null,
         expiresAt: null,
         isActive: false,
@@ -340,7 +339,7 @@ export function useSessionKey() {
 
   return {
     // State
-    sessionKey: state.smartAccountAddress,
+    sessionKey: state.smartAccountAddress, // The actual session key (smart account)
     isActive: state.isActive,
     isCreating: state.isCreating || isWritePending,
     error: state.error,
