@@ -812,11 +812,31 @@ export default function PlayPage() {
                   max="95"
                   value={odds}
                   onChange={(e) => setOdds(parseInt(e.target.value))}
-                  className="w-full h-2 bg-white/50 rounded-lg appearance-none cursor-pointer accent-primary"
+                  className="w-full accent-primary"
                 />
+                {/* Odds Preset Buttons */}
+                <div className="flex gap-2 mt-2">
+                  {[10, 25, 50, 75, 90].map((pct) => (
+                    <button
+                      key={pct}
+                      onClick={() => setOdds(pct)}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-lg border-2 transition-colors ${
+                        odds === pct 
+                          ? "border-primary bg-primary/10 text-primary-dark" 
+                          : "border-foreground/20 hover:border-primary/50 text-foreground/70"
+                      }`}
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-between text-xs mt-2 text-foreground/50">
+                  <span>High risk</span>
+                  <span>Low risk</span>
+                </div>
               </div>
 
-              {/* Payout Preview */}
+              {/* Multiplier & Payout Display */}
               <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-white/30 rounded-xl text-sm">
                 <div>
                   <p className="text-foreground/60 text-xs">Multiplier</p>
