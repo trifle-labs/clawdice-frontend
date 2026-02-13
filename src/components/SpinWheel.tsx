@@ -111,10 +111,8 @@ export function SpinWheel({
       controls.start({
         rotate: finalRotation,
         transition: {
-          type: "spring",
-          stiffness: 15,
-          damping: 8,
-          mass: 1.5,
+          duration: 3,
+          ease: [0.25, 0.1, 0.25, 1], // cubic-bezier for smooth deceleration
         },
       }).then(() => {
         rotationRef.current = finalRotation;
