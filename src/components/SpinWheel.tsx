@@ -95,19 +95,23 @@ export function SpinWheel({
         expectedAngle: finalRotation % 360,
       });
       
-      // Reset to 0 first, then animate to final position
-      controls.set({ rotate: 0 });
-      
-      controls.start({
-        rotate: finalRotation,
-        transition: {
-          duration: 3,
-          ease: [0.15, 0.85, 0.35, 1], // smooth deceleration
-        },
-      }).then(() => {
-        rotationRef.current = finalRotation;
-        isLandingRef.current = false;
-        onSpinComplete?.();
+      // Stop current animation, wait a frame, then start landing animation
+      controls.stop();
+      requestAnimationFrame(() => {
+        controls.set({ rotate: 0 });
+        requestAnimationFrame(() => {
+          controls.start({
+            rotate: finalRotation,
+            transition: {
+              duration: 3,
+              ease: [0.15, 0.85, 0.35, 1],
+            },
+          }).then(() => {
+            rotationRef.current = finalRotation;
+            isLandingRef.current = false;
+            onSpinComplete?.();
+          });
+        });
       });
     }
   }, [resultPosition, isSpinning, targetDegrees, controls, onSpinComplete]);
