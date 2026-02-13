@@ -557,10 +557,15 @@ export default function PlayPage() {
                         const balance = useETH 
                           ? (ethBalance ? Number(ethBalance.formatted) : 0)
                           : (userTokenBalance ? Number(formatEther(userTokenBalance)) : 0);
-                        const val = (balance * pct / 100);
+                        let val = (balance * pct / 100);
                         // Leave some ETH for gas
-                        const adjusted = useETH && pct === 100 ? Math.max(0, val - 0.001) : val;
-                        setAmount(adjusted > 0 ? adjusted.toFixed(useETH ? 6 : 2) : "0");
+                        if (useETH && pct === 100) val = Math.max(0, val - 0.001);
+                        // Cap at maxBet (for CLAW bets)
+                        if (!useETH && maxBet) {
+                          const maxBetNum = Number(formatEther(maxBet));
+                          val = Math.min(val, maxBetNum);
+                        }
+                        setAmount(val > 0 ? val.toFixed(useETH ? 6 : 2) : "0");
                       }}
                       className="flex-1 py-1.5 text-xs font-medium glass rounded-lg hover:bg-white/80 transition-colors"
                     >
