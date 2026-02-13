@@ -40,7 +40,8 @@ export function SpinWheel({
   onSpinComplete,
 }: SpinWheelProps) {
   const controls = useAnimation();
-  const [currentRotation, setCurrentRotation] = useState(0);
+  // Use ref for rotation to avoid async state issues
+  const rotationRef = useRef(0);
   const animationFrameRef = useRef<number>();
   const isLandingRef = useRef(false);
 
@@ -59,11 +60,9 @@ export function SpinWheel({
   // Continuous spin while waiting for result
   useEffect(() => {
     if (isSpinning && resultPosition === null && !isLandingRef.current) {
-      let rotation = currentRotation;
       const spin = () => {
-        rotation += 12;
-        setCurrentRotation(rotation);
-        controls.set({ rotate: rotation });
+        rotationRef.current += 12;
+        controls.set({ rotate: rotationRef.current });
         animationFrameRef.current = requestAnimationFrame(spin);
       };
       animationFrameRef.current = requestAnimationFrame(spin);
@@ -74,7 +73,7 @@ export function SpinWheel({
         }
       };
     }
-  }, [isSpinning, resultPosition, controls, currentRotation]);
+  }, [isSpinning, resultPosition, controls]);
 
   // Land on result
   useEffect(() => {
@@ -85,7 +84,8 @@ export function SpinWheel({
         cancelAnimationFrame(animationFrameRef.current);
       }
       
-      const baseRotation = currentRotation;
+      // Use ref value directly - no async state issues
+      const baseRotation = rotationRef.current;
       const numSpins = 3 + Math.floor(Math.random() * 3);
       const fullSpins = numSpins * 360;
       
@@ -100,7 +100,9 @@ export function SpinWheel({
       console.log("SpinWheel:", { 
         resultPosition,
         targetDegrees,
+        baseRotation,
         currentAngle,
+        target,
         delta,
         finalRotation,
         finalAngle: finalRotation % 360,
@@ -115,18 +117,18 @@ export function SpinWheel({
           mass: 1.5,
         },
       }).then(() => {
-        setCurrentRotation(finalRotation);
+        rotationRef.current = finalRotation;
         isLandingRef.current = false;
         onSpinComplete?.();
       });
     }
-  }, [resultPosition, isSpinning, targetDegrees, controls, currentRotation, onSpinComplete]);
+  }, [resultPosition, isSpinning, targetDegrees, controls, onSpinComplete]);
 
   // Reset on new spin
   useEffect(() => {
     if (!isSpinning && resultPosition === null) {
       isLandingRef.current = false;
-      setCurrentRotation(0);
+      rotationRef.current = 0;
       controls.set({ rotate: 0 });
     }
   }, [isSpinning, resultPosition, controls]);
