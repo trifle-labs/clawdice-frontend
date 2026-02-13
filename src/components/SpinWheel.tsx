@@ -74,27 +74,35 @@ export function SpinWheel({
       cancelAnimationFrame(animationFrameRef.current);
     }
     
-    const finalRotation = 3 * 360 + targetDegrees;
+    // Continue from current position, add spins, land on target (clockwise)
+    const currentRot = spinRotationRef.current;
+    const currentAngle = ((currentRot % 360) + 360) % 360;
+    
+    // Calculate delta to reach target going forward (clockwise)
+    let delta = targetDegrees - currentAngle;
+    if (delta <= 0) delta += 360; // Always go forward
+    
+    // Add 3 full spins for drama, then land on target
+    const finalRotation = currentRot + 3 * 360 + delta;
     
     console.log("SpinWheel landing:", { 
       resultPosition,
       targetDegrees,
+      currentRot,
+      currentAngle,
+      delta,
       finalRotation,
+      finalAngle: finalRotation % 360,
     });
     
-    // Immediately set to 0 (no transition)
-    setRotation(0);
+    // Start landing animation from current position
+    setRotation(finalRotation);
     
-    // After a tick, start the landing animation
+    // Mark as done after animation completes
     const timeoutId = setTimeout(() => {
-      setRotation(finalRotation);
-      
-      // Mark as done after animation completes
-      setTimeout(() => {
-        setPhase('done');
-        onSpinComplete?.();
-      }, 3000);
-    }, 50);
+      setPhase('done');
+      onSpinComplete?.();
+    }, 3000);
     
     return () => clearTimeout(timeoutId);
   }, [phase, targetDegrees, resultPosition, onSpinComplete]);
@@ -142,22 +150,6 @@ export function SpinWheel({
           </linearGradient>
         </defs>
         
-        {/* Quarter labels */}
-        {[0, 25, 50, 75].map((pct) => {
-          const p = angleToPoint((pct / 100) * 360, radius * 0.7);
-          return (
-            <text key={pct} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle"
-              fill="rgba(0,0,0,0.4)" fontSize="10" fontWeight="bold">
-              {pct}
-            </text>
-          );
-        })}
-        
-        {/* Debug: blue dot at target position */}
-        {resultPosition !== null && (() => {
-          const p = angleToPoint(targetDegrees, radius * 0.5);
-          return <circle cx={p.x} cy={p.y} r="6" fill="blue" stroke="white" strokeWidth="2" />;
-        })()}
       </svg>
       
       {/* Arrow - using CSS transform */}
@@ -190,11 +182,6 @@ export function SpinWheel({
           </div>
         </div>
       )}
-      
-      {/* Debug: show current rotation */}
-      <div className="absolute -bottom-6 left-0 right-0 text-center text-xs text-gray-500">
-        rot: {rotation.toFixed(0)}° → {(rotation % 360).toFixed(0)}° | target: {targetDegrees.toFixed(0)}°
-      </div>
     </div>
   );
 }

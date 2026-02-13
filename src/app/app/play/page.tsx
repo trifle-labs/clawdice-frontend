@@ -227,8 +227,7 @@ export default function PlayPage() {
         if (betId) {
           setCurrentBetId(betId);
           setBetState("waiting");
-          setIsRolling(true);
-          scrollToSpinner();
+          // isRolling already true from handlePlaceBet
         }
       } else if (betState === "claiming") {
         // Check if this was our bet before showing success screen
@@ -464,6 +463,8 @@ export default function PlayPage() {
     if (!address || !amount) return;
 
     setBetState("placing");
+    setIsRolling(true);
+    scrollToSpinner();
 
     if (useETH) {
       // Place bet with ETH (atomic swap) - needs higher gas for Uniswap V4 swap
