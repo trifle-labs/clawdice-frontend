@@ -657,7 +657,15 @@ export default function PlayPage() {
                           const maxBetNum = Number(formatEther(maxBet));
                           val = Math.min(val, maxBetNum);
                         }
-                        setAmount(val > 0 ? val.toFixed(useETH ? 6 : 2) : "0");
+                        // Use dynamic precision - more decimals for small amounts
+                        const formatVal = (v: number) => {
+                          if (v === 0) return "0";
+                          if (v >= 1) return v.toFixed(2);
+                          if (v >= 0.01) return v.toFixed(4);
+                          if (v >= 0.0001) return v.toFixed(6);
+                          return v.toFixed(8);
+                        };
+                        setAmount(val > 0 ? formatVal(val) : "0");
                       }}
                       className="flex-1 py-1.5 text-xs font-medium glass rounded-lg hover:bg-white/80 transition-colors"
                     >
