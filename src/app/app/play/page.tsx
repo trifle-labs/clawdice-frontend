@@ -211,24 +211,47 @@ export default function PlayPage() {
       const waitAndClaim = async () => {
         // Get the bet's block number and wait for next block
         try {
-          const bet = await publicClient.readContract({
+          const betData = await publicClient.readContract({
             address: CONTRACTS.baseSepolia.clawdice,
             abi: CLAWDICE_ABI,
             functionName: "getBet",
             args: [currentBetId],
-          }) as { blockNumber: bigint };
+          });
           
-          const targetBlock = bet.blockNumber + BigInt(1);
-          console.log("Bet placed at block", bet.blockNumber.toString(), "waiting for block", targetBlock.toString());
+          // Parse the returned tuple - viem returns it as an object with named properties
+          // Structure: { player, amount, targetOddsE18, blockNumber, status }
+          const bet = betData as { 
+            player: `0x${string}`; 
+            amount: bigint; 
+            targetOddsE18: bigint; 
+            blockNumber: bigint; 
+            status: number;
+          };
           
-          // Poll until we're past the target block
-          let currentBlock = await publicClient.getBlockNumber();
-          while (currentBlock <= targetBlock) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            currentBlock = await publicClient.getBlockNumber();
-            console.log("Current block:", currentBlock.toString());
+          console.log("Bet data:", JSON.stringify({
+            player: bet.player,
+            amount: bet.amount?.toString(),
+            blockNumber: bet.blockNumber?.toString(),
+            status: bet.status,
+          }));
+          
+          // Ensure we have a valid block number
+          if (!bet.blockNumber || bet.blockNumber === BigInt(0)) {
+            console.error("Invalid block number from getBet, waiting 5s as fallback");
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+          } else {
+            const targetBlock = bet.blockNumber + BigInt(1);
+            console.log("Bet placed at block", bet.blockNumber.toString(), "waiting for block", targetBlock.toString());
+          
+            // Poll until we're past the target block
+            let currentBlock = await publicClient.getBlockNumber();
+            while (currentBlock <= targetBlock) {
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+              currentBlock = await publicClient.getBlockNumber();
+              console.log("Current block:", currentBlock.toString());
+            }
+            console.log("Block ready, proceeding with claim");
           }
-          console.log("Block ready, proceeding with claim");
         } catch (err) {
           console.error("Error waiting for block:", err);
           // Fall back to simple timeout
