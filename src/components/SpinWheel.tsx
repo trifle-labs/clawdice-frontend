@@ -87,14 +87,20 @@ export function SpinWheel({
       // To point at X%, we need to rotate the pointer X% of 360°
       const targetAngle = resultAngle;
       
-      // Calculate final rotation ensuring we always go forward
-      const finalRotation = baseRotation + fullSpins + targetAngle - (baseRotation % 360);
+      // Calculate how much more rotation needed to land on target
+      // This handles the case where current angle > target angle correctly
+      const currentAngle = baseRotation % 360;
+      const additionalRotation = (targetAngle - currentAngle + 360) % 360;
+      const finalRotation = baseRotation + fullSpins + additionalRotation;
       
       console.log("SpinWheel landing:", { 
         resultPosition, 
         resultAngle, 
-        baseRotation, 
+        baseRotation,
+        currentAngle,
+        additionalRotation,
         finalRotation,
+        finalAngle: finalRotation % 360,
         targetAngle,
       });
       
