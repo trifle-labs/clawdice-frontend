@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# Run ESLint - fails on errors (warnings are OK)
+echo "🔍 Running lint check..."
+npm run lint
+
+# Check if lint failed (exit code != 0 means errors)
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Lint errors found. Fix them before committing."
+  echo "💡 Run 'npm run lint' to see details."
+  exit 1
+fi
+
+echo "✅ Lint passed!"
