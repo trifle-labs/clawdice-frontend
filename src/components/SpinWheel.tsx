@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { motion, useAnimation } from "framer-motion";
 
 interface SpinWheelProps {
