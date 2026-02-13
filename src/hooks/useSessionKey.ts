@@ -116,14 +116,27 @@ export function useSessionKey() {
     }
   }, [address]);
 
+  // Track if we just created a session (to avoid immediate re-verification race)
+  const [justCreated, setJustCreated] = useState(false);
+
   // Verify session is still valid on-chain
   useEffect(() => {
     const smartAccount = state.smartAccountAddress;
     if (!smartAccount || !address || !publicClient) return;
 
+    // Skip verification if we just created the session (we already confirmed via receipt)
+    if (justCreated) {
+      console.log("[useSessionKey] Skipping verification - just created session");
+      setJustCreated(false);
+      return;
+    }
+
     const verifySession = async () => {
       console.log("[useSessionKey] Verifying session on-chain:", { player: address, sessionKey: smartAccount });
       try {
+        // Small delay to allow RPC to sync
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         const isValid = await publicClient.readContract({
           address: CONTRACTS.baseSepolia.clawdice,
           abi: CLAWDICE_ABI,
@@ -144,7 +157,7 @@ export function useSessionKey() {
     };
 
     verifySession();
-  }, [state.smartAccountAddress, address, publicClient]);
+  }, [state.smartAccountAddress, address, publicClient, justCreated]);
 
   const clearLocalStorage = () => {
     localStorage.removeItem(SESSION_KEY_STORAGE);
@@ -237,6 +250,9 @@ export function useSessionKey() {
           localStorage.setItem(SESSION_SMART_ACCOUNT_STORAGE, smartAccountAddress);
           localStorage.setItem(SESSION_EXPIRES_STORAGE, expiresAt.toString());
           localStorage.setItem(SESSION_PLAYER_STORAGE, address);
+          
+          // Mark as just created to skip immediate re-verification (avoids RPC lag race)
+          setJustCreated(true);
           
           console.log("[useSessionKey] localStorage updated, setting state...");
           setState({

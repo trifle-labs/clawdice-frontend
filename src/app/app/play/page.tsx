@@ -68,7 +68,6 @@ export default function PlayPage() {
   // Advanced & Auto mode state
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showAuto, setShowAuto] = useState(false);
-  const [rollDirection, setRollDirection] = useState<"under" | "over">("under");
   const [directOddsInput, setDirectOddsInput] = useState("");
   const [autoBetRunning, setAutoBetRunning] = useState(false);
   const [autoBetConfig, setAutoBetConfig] = useState<AutoBetConfig>({
@@ -1149,40 +1148,6 @@ export default function PlayPage() {
                           −1
                         </button>
                       </div>
-                    </div>
-
-                    {/* Roll Direction */}
-                    <div>
-                      <label className="text-xs text-foreground/60 mb-1 block">Roll Direction</label>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setRollDirection("under")}
-                          className={clsx(
-                            "flex-1 py-2 px-3 rounded-lg text-sm font-medium border-2 transition-colors",
-                            rollDirection === "under"
-                              ? "border-mint bg-mint/20 text-mint-dark"
-                              : "border-foreground/20 hover:border-mint/50 text-foreground/70"
-                          )}
-                        >
-                          Roll Under ({odds}%)
-                        </button>
-                        <button
-                          onClick={() => setRollDirection("over")}
-                          className={clsx(
-                            "flex-1 py-2 px-3 rounded-lg text-sm font-medium border-2 transition-colors",
-                            rollDirection === "over"
-                              ? "border-claw bg-claw/20 text-claw"
-                              : "border-foreground/20 hover:border-claw/50 text-foreground/70"
-                          )}
-                        >
-                          Roll Over ({100 - odds}%)
-                        </button>
-                      </div>
-                      <p className="text-xs text-foreground/50 mt-1">
-                        {rollDirection === "under" 
-                          ? `Win if result < ${(odds * 0.99).toFixed(2)}%` 
-                          : `Win if result ≥ ${(100 - odds * 0.99).toFixed(2)}%`}
-                      </p>
                     </div>
 
                     {/* Bet Size Multipliers */}
