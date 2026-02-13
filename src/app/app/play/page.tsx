@@ -4,11 +4,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance, useChainId, useSwitchChain } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatEther, parseEther, decodeEventLog } from "viem";
-import { Volume2, VolumeX, Info, Zap, Coins, ChevronDown, Play, Settings, Bot } from "lucide-react";
+import { Volume2, VolumeX, Info, Zap, Coins, ChevronDown, Play, Settings, Bot, History } from "lucide-react";
 import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { CONTRACTS, CLAWDICE_ABI, ERC20_ABI } from "@/lib/contracts";
 import { SwapModal } from "@/components/SwapModal";
 import { SpinWheel } from "@/components/SpinWheel";
+import { UserHistory } from "@/components/UserHistory";
+import { useNotifications } from "@/components/Notifications";
 import { useSponsoredClaim } from "@/hooks/useSponsoredClaim";
 import { useAutoReveal } from "@/hooks/useAutoReveal";
 import { useSessionKey } from "@/hooks/useSessionKey";
@@ -60,10 +62,12 @@ export default function PlayPage() {
   const [resultPosition, setResultPosition] = useState<number | null>(null);
   const [useETH, setUseETH] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const spinnerRef = useRef<HTMLDivElement>(null);
+  const { addNotification } = useNotifications();
   
   // Approval state (separate from bet state)
   const [isApproving, setIsApproving] = useState(false);
@@ -469,6 +473,11 @@ export default function PlayPage() {
                     setBetState("won");
                     // Don't set isRolling=false here - let onSpinComplete handle it after wheel stops
                     refetchBalance();
+                    addNotification({
+                      type: "success",
+                      title: "You Won! 🎉",
+                      message: `+${Number(formatEther(payout)).toFixed(2)} CLAW`,
+                    });
                     return;
                   } else {
                     // Not our bet - just reset state silently
@@ -500,6 +509,11 @@ export default function PlayPage() {
                       setBetState("lost");
                       // Don't set isRolling=false here - let onSpinComplete handle it after wheel stops
                       refetchBalance();
+                      addNotification({
+                        type: "error",
+                        title: "You Lost",
+                        message: `Better luck next time!`,
+                      });
                     } else {
                       console.log("Revealed losing bet for another player");
                       setBetState("idle");
@@ -529,7 +543,7 @@ export default function PlayPage() {
 
       waitAndClaim();
     }
-  }, [betState, currentBetId, publicClient, sponsoredClaim, writeContract, resetWrite, refetchBalance, address, computeResultPosition]);
+  }, [betState, currentBetId, publicClient, sponsoredClaim, writeContract, resetWrite, refetchBalance, address, computeResultPosition, addNotification]);
 
   const needsApproval = useCallback(() => {
     if (useETH) return false;
@@ -623,6 +637,12 @@ export default function PlayPage() {
                   setCurrentBetId(betId);
                   setBetState("waiting");
                   refetchBalance(); // Update balance after bet is placed
+                  addNotification({
+                    type: "info",
+                    title: "Bet Placed",
+                    message: `Bet #${betId} - waiting for block...`,
+                    txHash: txHash,
+                  });
                   return;
                 }
               } catch {
@@ -745,16 +765,26 @@ export default function PlayPage() {
             <h1 className="text-2xl md:text-3xl font-display text-foreground">Play</h1>
             <p className="text-foreground/60 text-sm">Roll the dice, test your luck</p>
           </div>
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2 glass rounded-lg hover:bg-white/80 transition-colors"
-          >
-            {soundEnabled ? (
-              <Volume2 className="w-5 h-5 text-foreground/70" />
-            ) : (
-              <VolumeX className="w-5 h-5 text-foreground/40" />
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="p-2 glass rounded-lg hover:bg-white/80 transition-colors"
+              title="Bet History"
+            >
+              <History className="w-5 h-5 text-foreground/70" />
+            </button>
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="p-2 glass rounded-lg hover:bg-white/80 transition-colors"
+              title={soundEnabled ? "Mute" : "Unmute"}
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-5 h-5 text-foreground/70" />
+              ) : (
+                <VolumeX className="w-5 h-5 text-foreground/40" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Main Game Card */}
@@ -1461,6 +1491,9 @@ export default function PlayPage() {
           </p>
         </div>
       </div>
+
+      {/* User History Side Panel */}
+      <UserHistory isOpen={historyOpen} onClose={() => setHistoryOpen(false)} />
     </div>
   );
 }

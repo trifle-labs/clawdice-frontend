@@ -6,6 +6,7 @@ import { createWeb3Modal } from "@web3modal/wagmi/react";
 import { config, projectId, metadata } from "@/lib/wagmi";
 import { useState, useEffect } from "react";
 import { PriceProvider } from "@/contexts/PriceContext";
+import { NotificationProvider } from "@/components/Notifications";
 import { baseSepolia } from "wagmi/chains";
 
 // Initialize Web3Modal
@@ -47,7 +48,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <PriceProvider>
-          {mounted ? children : null}
+          <NotificationProvider>
+            {mounted ? children : null}
+          </NotificationProvider>
         </PriceProvider>
       </QueryClientProvider>
     </WagmiProvider>

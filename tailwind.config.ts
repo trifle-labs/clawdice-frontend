@@ -50,8 +50,13 @@ const config: Config = {
         "sparkle": "sparkle 2s ease-in-out infinite",
         "float": "float 3s ease-in-out infinite",
         "shimmer": "shimmer 3s linear infinite",
+        "slide-in-right": "slideInRight 0.3s ease-out",
       },
       keyframes: {
+        slideInRight: {
+          "0%": { transform: "translateX(100%)", opacity: "0" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
+        },
         slideLeft: {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(-50%)" },
