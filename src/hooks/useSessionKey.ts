@@ -228,13 +228,13 @@ export function useSessionKey() {
         });
         console.log("[useSessionKey] Signature obtained");
 
-        // Submit to contract
+        // Submit to contract (player is first arg - anyone can submit with valid signature)
         console.log("[useSessionKey] Submitting createSession tx...");
         const txHash = await writeContractAsync({
           address: CONTRACTS.baseSepolia.clawdice,
           abi: CLAWDICE_ABI,
           functionName: "createSession",
-          args: [smartAccountAddress, expiresAt, maxBetAmount, signature],
+          args: [address, smartAccountAddress, expiresAt, maxBetAmount, signature],
         });
         console.log("[useSessionKey] Tx submitted:", txHash);
 

@@ -130,6 +130,7 @@ export const CLAWDICE_ABI = [
     type: "function",
     stateMutability: "nonpayable",
     inputs: [
+      { name: "player", type: "address" },
       { name: "sessionKey", type: "address" },
       { name: "expiresAt", type: "uint256" },
       { name: "maxBetAmount", type: "uint256" },
