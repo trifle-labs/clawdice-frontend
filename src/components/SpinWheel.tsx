@@ -47,12 +47,12 @@ export function SpinWheel({
     }
   }, [isSpinning, resultPosition, phase]);
 
-  // Continuous spin animation
+  // Continuous spin animation (fast - matches landing speed)
   useEffect(() => {
     if (phase !== 'spinning') return;
     
     const spin = () => {
-      spinRotationRef.current += 8;
+      spinRotationRef.current += 18; // Fast spin like during reveal
       setRotation(spinRotationRef.current);
       animationFrameRef.current = requestAnimationFrame(spin);
     };
@@ -173,8 +173,8 @@ export function SpinWheel({
         </svg>
       </div>
       
-      {/* Result badge */}
-      {resultPosition !== null && !isSpinning && (
+      {/* Result badge - only show after wheel stops */}
+      {phase === 'done' && resultPosition !== null && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className={`px-3 py-1.5 rounded-full text-white text-sm font-bold shadow-lg
             ${resultPosition < adjustedWinChance ? "bg-[#7DD4B0]" : "bg-[#E879A0]"}`}>

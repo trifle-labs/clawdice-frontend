@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance, useChainId, useSwitchChain } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatEther, parseEther, decodeEventLog } from "viem";
-import { Volume2, VolumeX, Info, Clock, Zap, Coins, ChevronDown, Play, Settings, Bot } from "lucide-react";
+import { Volume2, VolumeX, Info, Zap, Coins, ChevronDown, Play, Settings, Bot } from "lucide-react";
 import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { CONTRACTS, CLAWDICE_ABI, ERC20_ABI } from "@/lib/contracts";
 import { SwapModal } from "@/components/SwapModal";
@@ -825,24 +825,13 @@ export default function PlayPage() {
             </div>
           )}
 
-          {/* Status Messages */}
-          {betState === "placing" && (
-            <div className="text-center mb-6 text-foreground/60">
-              <Clock className="w-5 h-5 mx-auto mb-1 animate-spin" />
-              <p className="text-sm">Placing bet...</p>
-            </div>
-          )}
-          {betState === "waiting" && (
-            <div className="text-center mb-6 text-accent-dark">
-              <Clock className="w-5 h-5 mx-auto mb-1 animate-spin" />
-              <p className="text-sm">Waiting for next block...</p>
-            </div>
-          )}
-          {betState === "claiming" && (
-            <div className="text-center mb-6 text-primary-dark">
-              <Zap className="w-5 h-5 mx-auto mb-1 animate-pulse" />
-              <p className="text-sm">Revealing result...</p>
-            </div>
+          {/* Status Messages - minimal text only, spinner provides visual feedback */}
+          {(betState === "placing" || betState === "waiting" || betState === "claiming") && (
+            <p className="text-center mb-4 text-sm text-foreground/60">
+              {betState === "placing" && "Placing bet..."}
+              {betState === "waiting" && "Waiting for block..."}
+              {betState === "claiming" && "Revealing..."}
+            </p>
           )}
 
           {/* Bet Controls */}
