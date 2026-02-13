@@ -84,35 +84,25 @@ export function SpinWheel({
         cancelAnimationFrame(animationFrameRef.current);
       }
       
-      // Use ref value directly - no async state issues
-      const baseRotation = rotationRef.current;
-      const numSpins = 3 + Math.floor(Math.random() * 3);
-      const fullSpins = numSpins * 360;
-      
-      // Calculate rotation to land on target
-      const currentAngle = ((baseRotation % 360) + 360) % 360;
-      const target = ((targetDegrees % 360) + 360) % 360;
-      let delta = target - currentAngle;
-      if (delta < 0) delta += 360;
-      
-      const finalRotation = baseRotation + fullSpins + delta;
+      // Simple approach: spin a few more times then land exactly on target
+      const numSpins = 3;
+      const finalRotation = numSpins * 360 + targetDegrees;
       
       console.log("SpinWheel:", { 
         resultPosition,
         targetDegrees,
-        baseRotation,
-        currentAngle,
-        target,
-        delta,
         finalRotation,
-        finalAngle: finalRotation % 360,
+        expectedAngle: finalRotation % 360,
       });
+      
+      // Reset to 0 first, then animate to final position
+      controls.set({ rotate: 0 });
       
       controls.start({
         rotate: finalRotation,
         transition: {
           duration: 3,
-          ease: [0.25, 0.1, 0.25, 1], // cubic-bezier for smooth deceleration
+          ease: [0.15, 0.85, 0.35, 1], // smooth deceleration
         },
       }).then(() => {
         rotationRef.current = finalRotation;
