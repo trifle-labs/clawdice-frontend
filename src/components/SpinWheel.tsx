@@ -196,20 +196,53 @@ export function SpinWheel({
           </linearGradient>
         </defs>
         
-        {/* Quarter tick marks */}
+        {/* Quarter tick marks with labels */}
         {[0, 25, 50, 75].map((pct) => {
           const p1 = angleToPoint((pct / 100) * 360, radius * 0.85);
           const p2 = angleToPoint((pct / 100) * 360, radius * 0.95);
+          const pLabel = angleToPoint((pct / 100) * 360, radius * 0.7);
           return (
-            <line
-              key={pct}
-              x1={p1.x} y1={p1.y}
-              x2={p2.x} y2={p2.y}
-              stroke="rgba(255,255,255,0.5)"
-              strokeWidth="2"
-            />
+            <g key={pct}>
+              <line
+                x1={p1.x} y1={p1.y}
+                x2={p2.x} y2={p2.y}
+                stroke="rgba(255,255,255,0.8)"
+                strokeWidth="2"
+              />
+              <text
+                x={pLabel.x}
+                y={pLabel.y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="rgba(0,0,0,0.5)"
+                fontSize="10"
+                fontWeight="bold"
+              >
+                {pct}
+              </text>
+            </g>
           );
         })}
+        
+        {/* Debug: Show where result SHOULD land (static marker on wheel) */}
+        {resultPosition !== null && (
+          <>
+            {(() => {
+              const angle = (resultPosition / 100) * 360;
+              const p = angleToPoint(angle, radius * 0.5);
+              return (
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r="6"
+                  fill="blue"
+                  stroke="white"
+                  strokeWidth="2"
+                />
+              );
+            })()}
+          </>
+        )}
       </svg>
       
       {/* Spinning pointer */}
