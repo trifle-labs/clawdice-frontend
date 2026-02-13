@@ -62,24 +62,29 @@ export function SpinWheel({
         cancelAnimationFrame(animationFrameRef.current);
       }
       
-      // Calculate final rotation: 3 full spins + target angle
-      const finalRotation = 3 * 360 + targetDegrees;
+      // Get current rotation and calculate final
+      const currentRot = rotationRef.current;
+      const currentAngle = ((currentRot % 360) + 360) % 360;
+      
+      // Calculate how much more to rotate to reach target
+      // Add 3 full spins for visual effect
+      let delta = targetDegrees - currentAngle;
+      if (delta < 0) delta += 360; // Always go forward
+      const finalRotation = currentRot + 3 * 360 + delta;
       
       console.log("SpinWheel landing:", { 
         resultPosition,
         targetDegrees,
+        currentRot,
+        currentAngle,
+        delta,
         finalRotation,
+        finalAngle: finalRotation % 360,
       });
       
-      // Enable CSS transition and set final rotation
+      // Enable CSS transition and animate to final position
       setIsAnimating(true);
-      // Start from 0 for consistent animation
-      setRotation(0);
-      
-      // Use setTimeout to ensure the transition is applied after the reset
-      setTimeout(() => {
-        setRotation(finalRotation);
-      }, 50);
+      setRotation(finalRotation);
       
       // Call onSpinComplete after animation
       setTimeout(() => {
