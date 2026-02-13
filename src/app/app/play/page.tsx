@@ -257,7 +257,7 @@ export default function PlayPage() {
         }
       }
     }
-  }, [isSuccess, receipt, betState, parseBetId, parseResult, queryClient, refetchBalance, resetWrite]);
+  }, [isSuccess, receipt, betState, parseBetId, parseResult, queryClient, refetchBalance, resetWrite, address]);
 
   // Wait for next block then claim (try sponsored first, fall back to regular)
   useEffect(() => {
@@ -365,7 +365,7 @@ export default function PlayPage() {
                   }
                 }
                 if (decoded.eventName === "BetResolved") {
-                  const { won, payout } = decoded.args as { won: boolean; payout: bigint };
+                  const { won } = decoded.args as { won: boolean; payout: bigint };
                   // If it was a loss, BetClaimed won't fire, but BetResolved will
                   // For losses, we still want to show the result if it was our bet
                   if (!won) {
@@ -414,7 +414,7 @@ export default function PlayPage() {
 
       waitAndClaim();
     }
-  }, [betState, currentBetId, publicClient, sponsoredClaim, writeContract, resetWrite, refetchBalance]);
+  }, [betState, currentBetId, publicClient, sponsoredClaim, writeContract, resetWrite, refetchBalance, address, computeResultPosition]);
 
   const needsApproval = useCallback(() => {
     if (useETH) return false;
