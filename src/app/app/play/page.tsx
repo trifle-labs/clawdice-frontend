@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance, useChainId, useSwitchChain } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatEther, parseEther, decodeEventLog } from "viem";
-import { Volume2, VolumeX, Info, Clock, Zap, Coins } from "lucide-react";
+import { Volume2, VolumeX, Info, Clock, Zap, Coins, ChevronDown, Play, Settings, Bot } from "lucide-react";
 import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { CONTRACTS, CLAWDICE_ABI, ERC20_ABI } from "@/lib/contracts";
 import { SwapModal } from "@/components/SwapModal";
@@ -15,6 +15,19 @@ import clsx from "clsx";
 import { X, Check, AlertCircle } from "lucide-react";
 
 type BetState = "idle" | "approving" | "placing" | "waiting" | "claiming" | "won" | "lost";
+
+type BetStrategy = "flat" | "martingale" | "antiMartingale" | "fibonacci" | "dalembert" | "kelly";
+
+interface AutoBetConfig {
+  strategy: BetStrategy;
+  baseBet: string;
+  maxBet: string;
+  stopOnProfit: string;
+  stopOnLoss: string;
+  numberOfBets: number;
+  resetOnWin: boolean;
+  resetOnLoss: boolean;
+}
 
 export default function PlayPage() {
   const { address, isConnected } = useAccount();
@@ -42,6 +55,24 @@ export default function PlayPage() {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const spinnerRef = useRef<HTMLDivElement>(null);
+  
+  // Advanced & Auto mode state
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAuto, setShowAuto] = useState(false);
+  const [rollDirection, setRollDirection] = useState<"under" | "over">("under");
+  const [directOddsInput, setDirectOddsInput] = useState("");
+  const [autoBetRunning, setAutoBetRunning] = useState(false);
+  const [autoBetConfig, setAutoBetConfig] = useState<AutoBetConfig>({
+    strategy: "flat",
+    baseBet: "",
+    maxBet: "",
+    stopOnProfit: "",
+    stopOnLoss: "",
+    numberOfBets: 10,
+    resetOnWin: false,
+    resetOnLoss: true,
+  });
+  const [autoBetStats, setAutoBetStats] = useState({ betsPlaced: 0, wins: 0, losses: 0, profit: BigInt(0) });
 
   // Scroll to spinner when bet starts
   const scrollToSpinner = useCallback(() => {
@@ -906,6 +937,334 @@ export default function PlayPage() {
                   {isPending || isConfirming ? "Processing..." : "Spin to Win"}
                 </button>
               )}
+
+              {/* Advanced Section - Collapsible */}
+              <div className="mt-6 border-t border-foreground/10 pt-4">
+                <button
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="w-full flex items-center justify-between text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <Settings className="w-4 h-4" />
+                    Advanced
+                  </span>
+                  <ChevronDown className={clsx("w-4 h-4 transition-transform", showAdvanced && "rotate-180")} />
+                </button>
+                
+                {showAdvanced && (
+                  <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                    {/* Direct Win Chance Input */}
+                    <div>
+                      <label className="text-xs text-foreground/60 mb-1 block">Win Chance (%)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          value={directOddsInput || odds}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDirectOddsInput(val);
+                            const num = parseFloat(val);
+                            if (!isNaN(num) && num >= 0.01 && num <= 99) {
+                              setOdds(Math.round(num));
+                            }
+                          }}
+                          onBlur={() => {
+                            const num = parseFloat(directOddsInput);
+                            if (!isNaN(num)) {
+                              const clamped = Math.min(99, Math.max(0.01, num));
+                              setOdds(Math.round(clamped));
+                              setDirectOddsInput("");
+                            }
+                          }}
+                          step="0.01"
+                          min="0.01"
+                          max="99"
+                          className="flex-1 bg-white/50 border border-primary/20 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary"
+                        />
+                        <button
+                          onClick={() => setOdds(Math.min(99, odds + 1))}
+                          className="px-3 py-2 bg-primary/10 hover:bg-primary/20 rounded-lg text-sm font-medium text-primary-dark"
+                        >
+                          +1
+                        </button>
+                        <button
+                          onClick={() => setOdds(Math.max(1, odds - 1))}
+                          className="px-3 py-2 bg-primary/10 hover:bg-primary/20 rounded-lg text-sm font-medium text-primary-dark"
+                        >
+                          −1
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Roll Direction */}
+                    <div>
+                      <label className="text-xs text-foreground/60 mb-1 block">Roll Direction</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setRollDirection("under")}
+                          className={clsx(
+                            "flex-1 py-2 px-3 rounded-lg text-sm font-medium border-2 transition-colors",
+                            rollDirection === "under"
+                              ? "border-mint bg-mint/20 text-mint-dark"
+                              : "border-foreground/20 hover:border-mint/50 text-foreground/70"
+                          )}
+                        >
+                          Roll Under ({odds}%)
+                        </button>
+                        <button
+                          onClick={() => setRollDirection("over")}
+                          className={clsx(
+                            "flex-1 py-2 px-3 rounded-lg text-sm font-medium border-2 transition-colors",
+                            rollDirection === "over"
+                              ? "border-claw bg-claw/20 text-claw"
+                              : "border-foreground/20 hover:border-claw/50 text-foreground/70"
+                          )}
+                        >
+                          Roll Over ({100 - odds}%)
+                        </button>
+                      </div>
+                      <p className="text-xs text-foreground/50 mt-1">
+                        {rollDirection === "under" 
+                          ? `Win if result < ${(odds * 0.99).toFixed(2)}%` 
+                          : `Win if result ≥ ${(100 - odds * 0.99).toFixed(2)}%`}
+                      </p>
+                    </div>
+
+                    {/* Bet Size Multipliers */}
+                    <div>
+                      <label className="text-xs text-foreground/60 mb-1 block">Quick Bet Adjust</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const current = parseFloat(amount) || 0;
+                            setAmount(Math.max(0.0001, current / 2).toString());
+                            setSelectedPreset(null);
+                          }}
+                          className="flex-1 py-2 px-3 bg-foreground/5 hover:bg-foreground/10 rounded-lg text-sm font-medium text-foreground/70"
+                        >
+                          ½
+                        </button>
+                        <button
+                          onClick={() => {
+                            const current = parseFloat(amount) || 0;
+                            const doubled = current * 2;
+                            const maxAllowed = maxBet ? Number(formatEther(maxBet)) : doubled;
+                            setAmount(Math.min(doubled, maxAllowed).toString());
+                            setSelectedPreset(null);
+                          }}
+                          className="flex-1 py-2 px-3 bg-foreground/5 hover:bg-foreground/10 rounded-lg text-sm font-medium text-foreground/70"
+                        >
+                          2×
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAmount("0");
+                            setSelectedPreset(null);
+                          }}
+                          className="flex-1 py-2 px-3 bg-foreground/5 hover:bg-foreground/10 rounded-lg text-sm font-medium text-foreground/70"
+                        >
+                          Min
+                        </button>
+                        <button
+                          onClick={handleMax}
+                          className="flex-1 py-2 px-3 bg-foreground/5 hover:bg-foreground/10 rounded-lg text-sm font-medium text-foreground/70"
+                        >
+                          Max
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Auto Bet Section - Collapsible */}
+              <div className="mt-4 border-t border-foreground/10 pt-4">
+                <button
+                  onClick={() => setShowAuto(!showAuto)}
+                  className="w-full flex items-center justify-between text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <Bot className="w-4 h-4" />
+                    Auto Bet
+                  </span>
+                  <ChevronDown className={clsx("w-4 h-4 transition-transform", showAuto && "rotate-180")} />
+                </button>
+                
+                {showAuto && (
+                  <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                    {/* Strategy Selector */}
+                    <div>
+                      <label className="text-xs text-foreground/60 mb-1 block">Strategy</label>
+                      <select
+                        value={autoBetConfig.strategy}
+                        onChange={(e) => setAutoBetConfig({ ...autoBetConfig, strategy: e.target.value as BetStrategy })}
+                        className="w-full bg-white/50 border border-primary/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      >
+                        <option value="flat">Flat (Same bet every time)</option>
+                        <option value="martingale">Martingale (2× after loss)</option>
+                        <option value="antiMartingale">Anti-Martingale (2× after win)</option>
+                        <option value="fibonacci">Fibonacci (Sequence progression)</option>
+                        <option value="dalembert">D&apos;Alembert (+1 loss, −1 win)</option>
+                        <option value="kelly">Kelly Criterion (Optimal sizing)</option>
+                      </select>
+                      <p className="text-xs text-foreground/50 mt-1">
+                        {autoBetConfig.strategy === "flat" && "Bet the same amount every time. Safest approach."}
+                        {autoBetConfig.strategy === "martingale" && "Double bet after loss, reset after win. High risk."}
+                        {autoBetConfig.strategy === "antiMartingale" && "Double bet after win, reset after loss. Ride winning streaks."}
+                        {autoBetConfig.strategy === "fibonacci" && "Follow Fibonacci sequence (1,1,2,3,5,8...) for bet sizes."}
+                        {autoBetConfig.strategy === "dalembert" && "Increase by 1 unit after loss, decrease by 1 after win."}
+                        {autoBetConfig.strategy === "kelly" && "Bet optimal fraction based on edge and bankroll."}
+                      </p>
+                    </div>
+
+                    {/* Base Bet & Max Bet */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-foreground/60 mb-1 block">Base Bet</label>
+                        <input
+                          type="number"
+                          value={autoBetConfig.baseBet}
+                          onChange={(e) => setAutoBetConfig({ ...autoBetConfig, baseBet: e.target.value })}
+                          placeholder="0.1"
+                          className="w-full bg-white/50 border border-primary/20 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-foreground/60 mb-1 block">Max Bet</label>
+                        <input
+                          type="number"
+                          value={autoBetConfig.maxBet}
+                          onChange={(e) => setAutoBetConfig({ ...autoBetConfig, maxBet: e.target.value })}
+                          placeholder="10"
+                          className="w-full bg-white/50 border border-primary/20 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Stop Conditions */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-foreground/60 mb-1 block">Stop on Profit</label>
+                        <input
+                          type="number"
+                          value={autoBetConfig.stopOnProfit}
+                          onChange={(e) => setAutoBetConfig({ ...autoBetConfig, stopOnProfit: e.target.value })}
+                          placeholder="100"
+                          className="w-full bg-white/50 border border-primary/20 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-foreground/60 mb-1 block">Stop on Loss</label>
+                        <input
+                          type="number"
+                          value={autoBetConfig.stopOnLoss}
+                          onChange={(e) => setAutoBetConfig({ ...autoBetConfig, stopOnLoss: e.target.value })}
+                          placeholder="50"
+                          className="w-full bg-white/50 border border-primary/20 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Number of Bets */}
+                    <div>
+                      <label className="text-xs text-foreground/60 mb-1 block">Number of Bets</label>
+                      <input
+                        type="number"
+                        value={autoBetConfig.numberOfBets}
+                        onChange={(e) => setAutoBetConfig({ ...autoBetConfig, numberOfBets: parseInt(e.target.value) || 0 })}
+                        placeholder="10"
+                        min="1"
+                        max="1000"
+                        className="w-full bg-white/50 border border-primary/20 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    {/* Reset Options */}
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 text-sm text-foreground/70">
+                        <input
+                          type="checkbox"
+                          checked={autoBetConfig.resetOnWin}
+                          onChange={(e) => setAutoBetConfig({ ...autoBetConfig, resetOnWin: e.target.checked })}
+                          className="rounded border-foreground/20"
+                        />
+                        Reset on Win
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-foreground/70">
+                        <input
+                          type="checkbox"
+                          checked={autoBetConfig.resetOnLoss}
+                          onChange={(e) => setAutoBetConfig({ ...autoBetConfig, resetOnLoss: e.target.checked })}
+                          className="rounded border-foreground/20"
+                        />
+                        Reset on Loss
+                      </label>
+                    </div>
+
+                    {/* Auto Bet Stats */}
+                    {(autoBetStats.betsPlaced > 0 || autoBetRunning) && (
+                      <div className="p-3 bg-white/30 rounded-xl text-sm">
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          <div>
+                            <p className="text-foreground/60 text-xs">Bets</p>
+                            <p className="font-bold">{autoBetStats.betsPlaced}</p>
+                          </div>
+                          <div>
+                            <p className="text-foreground/60 text-xs">Wins</p>
+                            <p className="font-bold text-mint-dark">{autoBetStats.wins}</p>
+                          </div>
+                          <div>
+                            <p className="text-foreground/60 text-xs">Losses</p>
+                            <p className="font-bold text-claw">{autoBetStats.losses}</p>
+                          </div>
+                          <div>
+                            <p className="text-foreground/60 text-xs">Profit</p>
+                            <p className={clsx("font-bold", autoBetStats.profit >= 0 ? "text-mint-dark" : "text-claw")}>
+                              {autoBetStats.profit >= 0 ? "+" : ""}{Number(formatEther(autoBetStats.profit)).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Start/Stop Auto Bet */}
+                    <button
+                      onClick={() => {
+                        if (autoBetRunning) {
+                          setAutoBetRunning(false);
+                        } else {
+                          // TODO: Implement auto-bet loop
+                          setAutoBetRunning(true);
+                          setAutoBetStats({ betsPlaced: 0, wins: 0, losses: 0, profit: BigInt(0) });
+                        }
+                      }}
+                      disabled={!autoBetConfig.baseBet || autoBetConfig.numberOfBets < 1}
+                      className={clsx(
+                        "w-full py-3 rounded-full font-bold transition-colors flex items-center justify-center gap-2",
+                        autoBetRunning
+                          ? "bg-claw text-white hover:bg-claw/90"
+                          : "bg-primary text-white hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                      )}
+                    >
+                      {autoBetRunning ? (
+                        <>
+                          <Play className="w-4 h-4" />
+                          Stop Auto Bet
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4" />
+                          Start Auto Bet
+                        </>
+                      )}
+                    </button>
+
+                    <p className="text-xs text-foreground/50 text-center">
+                      ⚠️ Auto-betting can result in significant losses. Gamble responsibly.
+                    </p>
+                  </div>
+                )}
+              </div>
             </>
           ) : null}
         </div>
