@@ -81,7 +81,8 @@ export function SpinWheel({
       
       // Calculate final rotation: complete 2-3 more full spins + land on result
       const baseRotation = currentRotation;
-      const fullSpins = 2 * 360 + Math.random() * 360; // 2-3 spins for variety
+      const numSpins = 2 + Math.floor(Math.random() * 2); // 2 or 3 full spins
+      const fullSpins = numSpins * 360; // MUST be multiple of 360 to not affect landing
       
       // The pointer points UP (0°), wheel 0% is at TOP
       // To point at X%, we need to rotate the pointer X% of 360°
@@ -95,13 +96,12 @@ export function SpinWheel({
       
       console.log("SpinWheel landing:", { 
         resultPosition, 
-        resultAngle, 
-        baseRotation,
+        targetAngle,
+        numSpins,
         currentAngle,
         additionalRotation,
         finalRotation,
         finalAngle: finalRotation % 360,
-        targetAngle,
       });
       
       controls.start({
