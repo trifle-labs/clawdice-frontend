@@ -945,14 +945,25 @@ export default function PlayPage() {
                           const maxBetNum = Number(formatEther(maxBet));
                           targetVal = Math.min(targetVal, maxBetNum);
                         }
-                        const formatVal = (v: number) => {
+                        // Truncate (floor) instead of round to avoid exceeding balance
+                        const truncateVal = (v: number) => {
                           if (v === 0) return "0";
-                          if (v >= 1) return v.toFixed(2);
-                          if (v >= 0.01) return v.toFixed(4);
-                          if (v >= 0.0001) return v.toFixed(6);
-                          return v.toFixed(8);
+                          if (v >= 1) {
+                            const factor = 100;
+                            return (Math.floor(v * factor) / factor).toString();
+                          }
+                          if (v >= 0.01) {
+                            const factor = 10000;
+                            return (Math.floor(v * factor) / factor).toString();
+                          }
+                          if (v >= 0.0001) {
+                            const factor = 1000000;
+                            return (Math.floor(v * factor) / factor).toString();
+                          }
+                          const factor = 100000000;
+                          return (Math.floor(v * factor) / factor).toString();
                         };
-                        setAmount(targetVal > 0 ? formatVal(targetVal) : "0");
+                        setAmount(targetVal > 0 ? truncateVal(targetVal) : "0");
                         setSelectedPreset(pct);
                       }}
                       className={`flex-1 py-1.5 text-xs font-medium rounded-lg border-2 transition-colors ${
