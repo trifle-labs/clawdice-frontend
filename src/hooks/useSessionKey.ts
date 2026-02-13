@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount, useSignTypedData, usePublicClient, useWriteContract } from "wagmi";
 import {
   createPublicClient,
@@ -116,8 +116,8 @@ export function useSessionKey() {
     }
   }, [address]);
 
-  // Track if we just created a session (to avoid immediate re-verification race)
-  const [justCreated, setJustCreated] = useState(false);
+  // Track if we just created a session (ref to avoid re-triggering useEffect)
+  const justCreatedRef = useRef(false);
 
   // Verify session is still valid on-chain
   useEffect(() => {
@@ -125,9 +125,9 @@ export function useSessionKey() {
     if (!smartAccount || !address || !publicClient) return;
 
     // Skip verification if we just created the session (we already confirmed via receipt)
-    if (justCreated) {
+    if (justCreatedRef.current) {
       console.log("[useSessionKey] Skipping verification - just created session");
-      setJustCreated(false);
+      justCreatedRef.current = false;
       return;
     }
 
@@ -157,7 +157,7 @@ export function useSessionKey() {
     };
 
     verifySession();
-  }, [state.smartAccountAddress, address, publicClient, justCreated]);
+  }, [state.smartAccountAddress, address, publicClient]);
 
   const clearLocalStorage = () => {
     localStorage.removeItem(SESSION_KEY_STORAGE);
@@ -252,7 +252,7 @@ export function useSessionKey() {
           localStorage.setItem(SESSION_PLAYER_STORAGE, address);
           
           // Mark as just created to skip immediate re-verification (avoids RPC lag race)
-          setJustCreated(true);
+          justCreatedRef.current = true;
           
           console.log("[useSessionKey] localStorage updated, setting state...");
           setState({
