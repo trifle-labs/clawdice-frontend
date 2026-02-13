@@ -44,9 +44,9 @@ export function SpinWheel({
   const winSectionDegrees = (adjustedWinChance / 100) * 360;
   
   // Calculate result angle (where the pointer should land)
-  // 0% = top (0°), 25% = right (90°), 50% = bottom (180°), 75% = left (270°)
+  // Use negative rotation to go counter-clockwise (matching SVG arc direction)
   const resultAngle = resultPosition !== null 
-    ? (resultPosition / 100) * 360
+    ? -((resultPosition / 100) * 360)
     : 0;
 
   // Continuous spin animation while waiting
