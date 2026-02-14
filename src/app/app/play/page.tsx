@@ -67,6 +67,7 @@ export default function PlayPage() {
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const spinnerRef = useRef<HTMLDivElement>(null);
   const { addNotification } = useNotifications();
+  const [pendingNotification, setPendingNotification] = useState<{ type: "success" | "error"; title: string; message: string } | null>(null);
   
   // Approval state (separate from bet state)
   const [isApproving, setIsApproving] = useState(false);
@@ -137,6 +138,14 @@ export default function PlayPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Show delayed notification after spin completes
+  useEffect(() => {
+    if (!isRolling && pendingNotification) {
+      addNotification(pendingNotification);
+      setPendingNotification(null);
+    }
+  }, [isRolling, pendingNotification, addNotification]);
 
   // Read user token balance
   const { data: userTokenBalance, refetch: refetchBalance } = useReadContract({
@@ -472,7 +481,8 @@ export default function PlayPage() {
                     setBetState("won");
                     // Don't set isRolling=false here - let onSpinComplete handle it after wheel stops
                     refetchBalance();
-                    addNotification({
+                    // Queue notification to show after spin completes
+                    setPendingNotification({
                       type: "success",
                       title: "You Won! 🎉",
                       message: `+${Number(formatEther(payout)).toFixed(2)} CLAW`,
@@ -508,7 +518,8 @@ export default function PlayPage() {
                       setBetState("lost");
                       // Don't set isRolling=false here - let onSpinComplete handle it after wheel stops
                       refetchBalance();
-                      addNotification({
+                      // Queue notification to show after spin completes
+                      setPendingNotification({
                         type: "error",
                         title: "You Lost",
                         message: `Better luck next time!`,
