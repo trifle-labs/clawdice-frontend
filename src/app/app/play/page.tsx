@@ -1034,7 +1034,7 @@ export default function PlayPage() {
                           : "border-mint/30 hover:border-mint hover:bg-mint/10 text-foreground/70"
                       }`}
                     >
-                      {pct}%
+                      {pct}
                     </button>
                   ))}
                 </div>
