@@ -962,7 +962,7 @@ export default function PlayPage() {
                   </div>
                 </div>
                 {/* Amount Slider */}
-                <div className="mt-3 px-1">
+                <div className="mt-3">
                   <input
                     type="range"
                     min="0"
@@ -989,10 +989,7 @@ export default function PlayPage() {
                       setAmount(targetVal > 0 ? truncateVal(targetVal) : "0");
                       setSelectedPreset(pct);
                     }}
-                    className="w-full h-2 rounded-lg appearance-none cursor-pointer slider-primary"
-                    style={{
-                      background: `linear-gradient(to right, #7DD4B0 0%, #7DD4B0 ${selectedPreset || 0}%, #e5e7eb ${selectedPreset || 0}%, #e5e7eb 100%)`
-                    }}
+                    className="w-full accent-mint"
                   />
                 </div>
                 {/* Amount Preset Buttons - green to match amount theme */}
