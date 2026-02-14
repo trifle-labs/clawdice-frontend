@@ -5,14 +5,14 @@ import Image from "next/image";
 import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { useState } from "react";
 import { Menu, X, Coins } from "lucide-react";
-import { useChainId, useAccount } from "wagmi";
+import { useChainId, useAccount, useReadContract } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
 import { formatEther } from "viem";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { DEFAULT_NETWORK } from "@/lib/networks";
 import { SwapModal } from "./SwapModal";
 import { CurrencyToggle } from "@/contexts/PriceContext";
-import { useIndexedClawBalance } from "@/hooks/useIndexedBalances";
+import { CONTRACTS, ERC20_ABI } from "@/lib/contracts";
 
 export function Header() {
   const [currentNetwork, setCurrentNetwork] = useState(DEFAULT_NETWORK);
@@ -22,8 +22,17 @@ export function Header() {
   const { address, isConnected } = useAccount();
   const { open } = useWeb3Modal();
   
-  // Fetch CLAW balance via Index Supply
-  const { data: clawBalance } = useIndexedClawBalance();
+  // Fetch CLAW balance via RPC for instant updates
+  const { data: clawBalance } = useReadContract({
+    address: CONTRACTS.baseSepolia.clawToken,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { 
+      enabled: !!address,
+      refetchInterval: 5000, // Refresh every 5s
+    },
+  });
   
   // Format balance for display
   const formatBalance = (balance: bigint | undefined) => {
