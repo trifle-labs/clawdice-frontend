@@ -3,17 +3,12 @@
 import { Dice5, Users, Coins, BarChart3 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { useStats, formatStatsForDisplay } from "@/hooks/useIndexer";
-import { useReadContract } from "wagmi";
+import { useIndexedVaultTVL } from "@/hooks/useIndexedBalances";
 import { formatEther } from "viem";
-import { CONTRACTS, VAULT_ABI } from "@/lib/contracts";
 
 export function HomeStats() {
   const { data: stats, isLoading } = useStats();
-  const { data: vaultTVL } = useReadContract({
-    address: CONTRACTS.baseSepolia.clawdiceVault,
-    abi: VAULT_ABI,
-    functionName: "totalAssets",
-  });
+  const { data: vaultTVL } = useIndexedVaultTVL();
 
   const displayStats = stats ? formatStatsForDisplay(stats) : null;
 

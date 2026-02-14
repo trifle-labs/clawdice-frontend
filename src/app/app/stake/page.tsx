@@ -6,6 +6,7 @@ import { formatEther, parseEther } from "viem";
 import { Vault, Info } from "lucide-react";
 import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { CONTRACTS, VAULT_ABI, ERC20_ABI } from "@/lib/contracts";
+import { useIndexedVaultTVL } from "@/hooks/useIndexedBalances";
 
 export default function StakePage() {
   const { address, isConnected } = useAccount();
@@ -13,12 +14,8 @@ export default function StakePage() {
   const [activeTab, setActiveTab] = useState<"stake" | "unstake">("stake");
   const [amount, setAmount] = useState("");
 
-  // Read vault data
-  const { data: totalAssets } = useReadContract({
-    address: CONTRACTS.baseSepolia.clawdiceVault,
-    abi: VAULT_ABI,
-    functionName: "totalAssets",
-  });
+  // Read vault data - TVL via Index Supply
+  const { data: totalAssets } = useIndexedVaultTVL();
 
   const { data: totalSupply } = useReadContract({
     address: CONTRACTS.baseSepolia.clawdiceVault,
@@ -40,6 +37,7 @@ export default function StakePage() {
     args: userShares ? [userShares] : undefined,
   });
 
+  // User's CLAW balance (RPC for immediate updates after stake/unstake)
   const { data: userTokenBalance } = useReadContract({
     address: CONTRACTS.baseSepolia.clawToken,
     abi: ERC20_ABI,

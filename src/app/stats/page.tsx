@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRecentBets, useStats, formatBetForDisplay, formatStatsForDisplay } from "@/hooks/useIndexer";
-import { useReadContract } from "wagmi";
-import { CONTRACTS, VAULT_ABI } from "@/lib/contracts";
+import { useIndexedVaultTVL } from "@/hooks/useIndexedBalances";
 import { usePrice } from "@/contexts/PriceContext";
 
 // ENS cache
@@ -47,12 +46,7 @@ export default function StatsPage() {
 
   const { data: bets, isLoading: betsLoading } = useRecentBets(50);
   const { data: stats, isLoading: statsLoading } = useStats();
-
-  const { data: vaultTVL } = useReadContract({
-    address: CONTRACTS.baseSepolia.clawdiceVault,
-    abi: VAULT_ABI,
-    functionName: "totalAssets",
-  });
+  const { data: vaultTVL } = useIndexedVaultTVL();
 
   const displayStats = stats ? formatStatsForDisplay(stats) : null;
   const displayBets = useMemo(() => bets?.map(formatBetForDisplay) || [], [bets]);

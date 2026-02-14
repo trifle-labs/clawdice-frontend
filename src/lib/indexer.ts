@@ -49,6 +49,14 @@ const EVENT_SIGNATURES = {
     "Withdraw(address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares)",
 };
 
+// ERC20 event signatures
+const ERC20_SIGNATURES = {
+  Transfer: "Transfer(address indexed from, address indexed to, uint256 value)",
+  Approval: "Approval(address indexed owner, address indexed spender, uint256 value)",
+};
+
+const CLAW_TOKEN_ADDRESS = network.contracts.clawToken;
+
 export interface BetEvent {
   betId: string;
   player: string;
@@ -340,4 +348,105 @@ export function subscribeToBets(
   })();
 
   return () => controller.abort();
+}
+
+/**
+ * Get CLAW token balance for an address via Index Supply
+ * Computes balance from Transfer events (sum of incoming - outgoing)
+ */
+export async function getClawBalance(
+  address: string,
+  apiKey?: string
+): Promise<bigint> {
+  const normalizedAddress = address.toLowerCase();
+  
+  const result = await query({
+    chainId: BASE_SEPOLIA_CHAIN,
+    apiKey,
+    signatures: [ERC20_SIGNATURES.Transfer],
+    query: `
+      SELECT 
+        SUM(CASE WHEN "to" = '${normalizedAddress}' THEN CAST(value AS DECIMAL(78,0)) ELSE 0 END) -
+        SUM(CASE WHEN "from" = '${normalizedAddress}' THEN CAST(value AS DECIMAL(78,0)) ELSE 0 END) as balance
+      FROM Transfer
+      WHERE address = '${CLAW_TOKEN_ADDRESS}'
+        AND ("to" = '${normalizedAddress}' OR "from" = '${normalizedAddress}')
+    `,
+  });
+
+  if (result.rows.length === 0) return 0n;
+  const row = result.rows[0] as Record<string, unknown>;
+  const balance = row.balance;
+  if (balance === null || balance === undefined) return 0n;
+  return BigInt(String(balance).split('.')[0]); // Remove any decimal part
+}
+
+/**
+ * Get CLAW token allowance for an address via Index Supply
+ * Returns the most recent Approval event value
+ */
+export async function getClawAllowance(
+  owner: string,
+  spender: string,
+  apiKey?: string
+): Promise<bigint> {
+  const normalizedOwner = owner.toLowerCase();
+  const normalizedSpender = spender.toLowerCase();
+  
+  const result = await query({
+    chainId: BASE_SEPOLIA_CHAIN,
+    apiKey,
+    signatures: [ERC20_SIGNATURES.Approval],
+    query: `
+      SELECT value
+      FROM Approval
+      WHERE address = '${CLAW_TOKEN_ADDRESS}'
+        AND owner = '${normalizedOwner}'
+        AND spender = '${normalizedSpender}'
+      ORDER BY block_num DESC
+      LIMIT 1
+    `,
+  });
+
+  if (result.rows.length === 0) return 0n;
+  const row = result.rows[0] as Record<string, unknown>;
+  return BigInt(row.value as string);
+}
+
+/**
+ * Get Vault TVL (total CLAW deposited minus withdrawn) via Index Supply
+ * Uses ERC-4626 Deposit/Withdraw events
+ */
+export async function getVaultTVL(apiKey?: string): Promise<bigint> {
+  const [depositResult, withdrawResult] = await Promise.all([
+    query({
+      chainId: BASE_SEPOLIA_CHAIN,
+      apiKey,
+      signatures: [EVENT_SIGNATURES.Deposit],
+      query: `
+        SELECT SUM(CAST(assets AS DECIMAL(78,0))) as total
+        FROM Deposit
+        WHERE address = '${VAULT_ADDRESS}'
+      `,
+    }),
+    query({
+      chainId: BASE_SEPOLIA_CHAIN,
+      apiKey,
+      signatures: [EVENT_SIGNATURES.Withdraw],
+      query: `
+        SELECT SUM(CAST(assets AS DECIMAL(78,0))) as total
+        FROM Withdraw
+        WHERE address = '${VAULT_ADDRESS}'
+      `,
+    }),
+  ]);
+
+  const deposited = depositResult.rows[0] 
+    ? BigInt(String((depositResult.rows[0] as Record<string, unknown>).total || 0).split('.')[0])
+    : 0n;
+  const withdrawn = withdrawResult.rows[0]
+    ? BigInt(String((withdrawResult.rows[0] as Record<string, unknown>).total || 0).split('.')[0])
+    : 0n;
+
+  return deposited - withdrawn;
 }
