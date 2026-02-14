@@ -1030,8 +1030,8 @@ export default function PlayPage() {
                       }}
                       className={`flex-1 py-1.5 text-xs font-medium rounded-lg border-2 transition-colors ${
                         selectedPreset === pct
-                          ? "border-primary bg-primary/20 text-primary-dark"
-                          : "border-primary/30 hover:border-primary hover:bg-primary/10 text-foreground/70"
+                          ? "border-mint-dark bg-mint/20 text-mint-dark"
+                          : "border-mint/30 hover:border-mint hover:bg-mint/10 text-foreground/70"
                       }`}
                     >
                       {pct}%
@@ -1180,7 +1180,7 @@ export default function PlayPage() {
                 <button
                   onClick={handleApprove}
                   disabled={!amount || isApproving}
-                  className="w-full btn-mint rounded-full py-3 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full btn-kawaii disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isApproving ? "Approving..." : "Approve CLAW"}
                 </button>
@@ -1188,7 +1188,7 @@ export default function PlayPage() {
                 <button
                   onClick={handlePlaceBet}
                   disabled={!amount || isPending || isConfirming || isCreatingSession}
-                  className="w-full btn-mint rounded-full py-3 font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full btn-kawaii disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <Zap className="w-5 h-5" />
                   {isPending || isConfirming ? "Processing..." : "Spin to Win"}
