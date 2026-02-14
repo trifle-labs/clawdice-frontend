@@ -126,7 +126,7 @@ export async function getRecentBets(
     });
   }
 
-  return betsResult.rows.map((row: Record<string, unknown>) => {
+  const bets = betsResult.rows.map((row: Record<string, unknown>) => {
     const betId = String(row.betid);
     const resolution = resolvedMap.get(betId);
     const betBlockNumber = Number(row.block_num);
@@ -145,6 +145,9 @@ export async function getRecentBets(
       expired: isExpired,
     };
   });
+
+  // Sort by block number descending (newest first)
+  return bets.sort((a, b) => b.blockNumber - a.blockNumber);
 }
 
 export async function getBetsByPlayer(
@@ -191,7 +194,7 @@ export async function getBetsByPlayer(
     });
   }
 
-  return betsResult.rows.map((row: Record<string, unknown>) => {
+  const bets = betsResult.rows.map((row: Record<string, unknown>) => {
     const betId = String(row.betid);
     const resolution = resolvedMap.get(betId);
     const betBlockNumber = Number(row.block_num);
@@ -210,6 +213,9 @@ export async function getBetsByPlayer(
       expired: isExpired,
     };
   });
+
+  // Sort by block number descending (newest first)
+  return bets.sort((a, b) => b.blockNumber - a.blockNumber);
 }
 
 export async function getStats(apiKey?: string): Promise<IndexerStats> {
