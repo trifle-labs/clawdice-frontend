@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useBalance, useChainId, useSwitchChain } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatEther, parseEther, decodeEventLog } from "viem";
-import { Volume2, VolumeX, Info, Zap, Coins, ChevronDown, Play, Settings, Bot, History } from "lucide-react";
+import { Info, Zap, Coins, ChevronDown, Play, Settings, Bot, History } from "lucide-react";
 import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { CONTRACTS, CLAWDICE_ABI, ERC20_ABI } from "@/lib/contracts";
 import { SwapModal } from "@/components/SwapModal";
@@ -55,7 +55,6 @@ export default function PlayPage() {
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const [odds, setOdds] = useState(50);
   const [betState, setBetState] = useState<BetState>("idle");
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const [isRolling, setIsRolling] = useState(false);
   const [lastResult, setLastResult] = useState<{ won: boolean; payout: bigint; resultPosition?: number } | null>(null);
   const [currentBetId, setCurrentBetId] = useState<bigint | null>(null);
@@ -772,17 +771,6 @@ export default function PlayPage() {
               title="Bet History"
             >
               <History className="w-5 h-5 text-foreground/70" />
-            </button>
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-2 glass rounded-lg hover:bg-white/80 transition-colors"
-              title={soundEnabled ? "Mute" : "Unmute"}
-            >
-              {soundEnabled ? (
-                <Volume2 className="w-5 h-5 text-foreground/70" />
-              ) : (
-                <VolumeX className="w-5 h-5 text-foreground/40" />
-              )}
             </button>
           </div>
         </div>
