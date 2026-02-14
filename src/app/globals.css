@@ -99,7 +99,6 @@ body {
   appearance: none;
   height: 8px;
   border-radius: 4px;
-  background: linear-gradient(90deg, #A8E6CF 0%, #7DD4B0 100%);
   outline: none;
 }
 
