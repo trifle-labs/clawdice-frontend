@@ -93,6 +93,43 @@ body {
   box-shadow: 0 0 30px rgba(224, 101, 101, 0.4);
 }
 
+/* Custom slider - primary green */
+.slider-primary {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #A8E6CF 0%, #7DD4B0 100%);
+  outline: none;
+}
+
+.slider-primary::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #7DD4B0;
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 6px rgba(125, 212, 176, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.slider-primary::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.slider-primary::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #7DD4B0;
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 6px rgba(125, 212, 176, 0.4);
+}
+
 /* Glass effect - kawaii frosted */
 .glass {
   background: rgba(255, 255, 255, 0.7);

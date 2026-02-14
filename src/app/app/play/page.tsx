@@ -961,7 +961,38 @@ export default function PlayPage() {
                     </button>
                   </div>
                 </div>
-                {/* Amount Preset Buttons - accent colored to differentiate from odds presets */}
+                {/* Amount Slider */}
+                <div className="mt-3 px-1">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={selectedPreset || 0}
+                    onChange={(e) => {
+                      const pct = parseInt(e.target.value);
+                      const balance = useETH 
+                        ? (ethBalance ? Number(ethBalance.formatted) : 0)
+                        : (userTokenBalance ? Number(formatEther(userTokenBalance)) : 0);
+                      let targetVal = (balance * pct / 100);
+                      if (useETH && pct === 100) targetVal = Math.max(0, targetVal - 0.001);
+                      if (!useETH && maxBet) {
+                        const maxBetNum = Number(formatEther(maxBet));
+                        targetVal = Math.min(targetVal, maxBetNum);
+                      }
+                      const truncateVal = (v: number) => {
+                        if (v === 0) return "0";
+                        if (v >= 1) return (Math.floor(v * 100) / 100).toString();
+                        if (v >= 0.01) return (Math.floor(v * 10000) / 10000).toString();
+                        if (v >= 0.0001) return (Math.floor(v * 1000000) / 1000000).toString();
+                        return (Math.floor(v * 100000000) / 100000000).toString();
+                      };
+                      setAmount(targetVal > 0 ? truncateVal(targetVal) : "0");
+                      setSelectedPreset(pct);
+                    }}
+                    className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary slider-primary"
+                  />
+                </div>
+                {/* Amount Preset Buttons - green to match amount theme */}
                 <div className="flex gap-2 mt-2">
                   {[10, 25, 50, 100].map((pct) => (
                     <button
@@ -999,8 +1030,8 @@ export default function PlayPage() {
                       }}
                       className={`flex-1 py-1.5 text-xs font-medium rounded-lg border-2 transition-colors ${
                         selectedPreset === pct
-                          ? "border-accent bg-accent/20 text-accent-dark"
-                          : "border-accent/30 hover:border-accent hover:bg-accent/10 text-foreground/70"
+                          ? "border-primary bg-primary/20 text-primary-dark"
+                          : "border-primary/30 hover:border-primary hover:bg-primary/10 text-foreground/70"
                       }`}
                     >
                       {pct}%
