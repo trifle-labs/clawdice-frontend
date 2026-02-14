@@ -46,14 +46,18 @@ export function usePoolPrice() {
   // Calculate price from sqrtPriceX96
   // For WETH/CLAW pool where WETH is token0:
   // price = (sqrtPriceX96 / 2^96)^2 = CLAW per WETH
-  let clawPerEth = 10000; // Default fallback
+  let clawPerEth = 10000; // Default fallback (matches target pool price)
   
   if (data) {
     const sqrtPriceX96 = data[0];
-    // price = (sqrtPriceX96 / 2^96)^2
-    // To avoid overflow, we do: (sqrtPriceX96^2) / 2^192
-    const sqrtPrice = Number(sqrtPriceX96) / (2 ** 96);
-    clawPerEth = sqrtPrice * sqrtPrice;
+    // Only calculate if pool is initialized (sqrtPriceX96 > 0)
+    if (sqrtPriceX96 > 0n) {
+      // price = (sqrtPriceX96 / 2^96)^2
+      // To avoid overflow, we do: (sqrtPriceX96^2) / 2^192
+      const sqrtPrice = Number(sqrtPriceX96) / (2 ** 96);
+      clawPerEth = sqrtPrice * sqrtPrice;
+    }
+    // If sqrtPriceX96 is 0, pool not initialized - use fallback
   }
 
   return {
