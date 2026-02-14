@@ -185,8 +185,18 @@ body {
 }
 
 .btn-mint {
-  background: linear-gradient(135deg, #A8E6CF 0%, #C8F5E5 100%);
-  color: #4A4A6A;
+  background: linear-gradient(135deg, #7DD4B0 0%, #A8E6CF 100%);
+  color: white;
+  border-radius: 50px;
+  padding: 12px 32px;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(125, 212, 176, 0.3);
+}
+
+.btn-mint:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(125, 212, 176, 0.4);
 }
 
 /* Star decorations */

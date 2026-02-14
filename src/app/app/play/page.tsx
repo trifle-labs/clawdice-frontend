@@ -1180,7 +1180,7 @@ export default function PlayPage() {
                 <button
                   onClick={handleApprove}
                   disabled={!amount || isApproving}
-                  className="w-full btn-kawaii disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full btn-mint rounded-full py-3 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isApproving ? "Approving..." : "Approve CLAW"}
                 </button>
@@ -1188,7 +1188,7 @@ export default function PlayPage() {
                 <button
                   onClick={handlePlaceBet}
                   disabled={!amount || isPending || isConfirming || isCreatingSession}
-                  className="w-full btn-accent rounded-full py-3 font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full btn-mint rounded-full py-3 font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <Zap className="w-5 h-5" />
                   {isPending || isConfirming ? "Processing..." : "Spin to Win"}
