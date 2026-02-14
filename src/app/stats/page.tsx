@@ -198,14 +198,17 @@ export default function StatsPage() {
                       bet.result === "lost" ? "text-[#E879A0]" : ""
                     }`}>
                       {bet.result === "won" 
-                        ? `+${formatValue(bet.payoutRaw)}`
+                        ? `${(bet.payoutRaw / bet.amountRaw).toFixed(1)}x`
                         : bet.result === "lost"
                         ? `-${formatValue(bet.amountRaw)}`
                         : formatValue(bet.amountRaw)
                       }
                     </p>
-                    <p className="text-xs text-foreground/50 uppercase">
-                      {bet.result}
+                    <p className="text-xs text-foreground/50">
+                      {bet.result === "won" 
+                        ? `+${formatValue(bet.payoutRaw)}`
+                        : bet.result.toUpperCase()
+                      }
                     </p>
                   </div>
                 </div>
