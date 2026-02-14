@@ -45,8 +45,8 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
     }
   }, [isSuccess, queryClient]);
 
-  // Rough estimate: 1 ETH ≈ 1 CLAW (adjust based on actual pool ratio)
-  const estimatedClaw = ethAmount ? parseFloat(ethAmount) : 0;
+  // Pool ratio: ~10,000 CLAW per ETH (based on pool initialization)
+  const estimatedClaw = ethAmount ? parseFloat(ethAmount) * 10000 : 0;
 
   const handleSwap = () => {
     if (!ethAmount || parseFloat(ethAmount) <= 0) return;
@@ -160,7 +160,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="flex-1 text-2xl font-medium">
-                      {estimatedClaw > 0 ? `~${estimatedClaw.toFixed(4)}` : "0.0"}
+                      {estimatedClaw > 0 ? `~${estimatedClaw.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "0.0"}
                     </span>
                     <span className="text-lg font-medium">CLAW</span>
                   </div>
