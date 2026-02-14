@@ -7,6 +7,7 @@ import { parseEther, formatEther } from "viem";
 import { baseSepolia, base } from "wagmi/chains";
 import { CONTRACTS, CLAWDICE_ABI } from "@/lib/contracts";
 import { ExternalLink } from "lucide-react";
+import { usePoolPrice } from "@/hooks/usePoolPrice";
 
 // CLAW token address
 const CLAW_TOKEN = "0xD2C1CB4556ca49Ac6C7A5bc71657bD615500057c";
@@ -36,6 +37,9 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
     hash,
   });
 
+  // Get actual pool price from StateView
+  const { clawPerEth, isLoading: priceLoading } = usePoolPrice();
+
   // Invalidate all balance queries when swap succeeds
   useEffect(() => {
     if (isSuccess) {
@@ -45,8 +49,8 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
     }
   }, [isSuccess, queryClient]);
 
-  // Pool ratio: ~10,000 CLAW per ETH (based on pool initialization)
-  const estimatedClaw = ethAmount ? parseFloat(ethAmount) * 10000 : 0;
+  // Estimate output using actual pool price
+  const estimatedClaw = ethAmount ? parseFloat(ethAmount) * clawPerEth : 0;
 
   const handleSwap = () => {
     if (!ethAmount || parseFloat(ethAmount) <= 0) return;
@@ -169,7 +173,9 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                 {/* Info */}
                 <div className="text-xs text-gray-900/50 mb-4 p-3 bg-gray-50 rounded-lg">
                   <p>⚡ Swaps via Uniswap V4 pool</p>
-                  <p className="mt-1">💡 Testnet only - rates may vary</p>
+                  <p className="mt-1">
+                    📊 Rate: 1 ETH ≈ {priceLoading ? "..." : clawPerEth.toLocaleString(undefined, { maximumFractionDigits: 0 })} CLAW
+                  </p>
                 </div>
 
                 {/* Error */}
