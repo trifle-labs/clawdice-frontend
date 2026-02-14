@@ -949,13 +949,13 @@ export default function PlayPage() {
                     value={amount}
                     onChange={(e) => { setAmount(e.target.value); setSelectedPreset(null); }}
                     placeholder="0.0"
-                    className="w-full bg-white/50 border border-primary/20 rounded-xl px-4 py-3 text-lg font-mono focus:outline-none focus:border-primary"
+                    className="w-full bg-white/50 border border-primary/20 rounded-xl px-4 py-3 pr-28 text-lg font-mono focus:outline-none focus:border-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
                     <span className="text-foreground/50 text-sm">{useETH ? "ETH" : "CLAW"}</span>
                     <button
                       onClick={handleMax}
-                      className="text-primary-dark hover:text-primary text-xs font-medium"
+                      className="text-primary-dark hover:text-primary text-xs font-medium px-2 py-1 rounded bg-white/50 hover:bg-white/80 pointer-events-auto"
                     >
                       MAX
                     </button>
