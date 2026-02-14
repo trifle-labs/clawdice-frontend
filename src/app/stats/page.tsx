@@ -35,7 +35,7 @@ async function resolveENS(address: string): Promise<string | null> {
   return null;
 }
 
-type SortOption = "recent" | "biggest-win" | "biggest-loss";
+type SortOption = "recent" | "biggest-win" | "biggest-loss" | "luckiest" | "unluckiest";
 type FilterOption = "all" | "wins" | "losses";
 
 export default function StatsPage() {
@@ -85,6 +85,18 @@ export default function StatsPage() {
         const aLoss = a.result === "lost" ? a.amountRaw : 0n;
         const bLoss = b.result === "lost" ? b.amountRaw : 0n;
         return bLoss > aLoss ? 1 : bLoss < aLoss ? -1 : 0;
+      }
+      if (sort === "luckiest") {
+        // Wins with worst odds (lowest win chance) - most surprising wins
+        const aOdds = a.result === "won" ? parseInt(a.odds) : 100;
+        const bOdds = b.result === "won" ? parseInt(b.odds) : 100;
+        return aOdds - bOdds; // Lower odds = luckier win, sort ascending
+      }
+      if (sort === "unluckiest") {
+        // Losses with best odds (highest win chance) - most surprising losses
+        const aOdds = a.result === "lost" ? parseInt(a.odds) : 0;
+        const bOdds = b.result === "lost" ? parseInt(b.odds) : 0;
+        return bOdds - aOdds; // Higher odds = unluckier loss, sort descending
       }
       return 0; // recent - already sorted by indexer
     });
@@ -143,6 +155,8 @@ export default function StatsPage() {
                 <option value="recent">Recent</option>
                 <option value="biggest-win">Top Wins</option>
                 <option value="biggest-loss">Top Losses</option>
+                <option value="luckiest">Luckiest</option>
+                <option value="unluckiest">Unluckiest</option>
               </select>
             </div>
           </div>
