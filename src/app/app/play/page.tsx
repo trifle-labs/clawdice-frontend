@@ -89,6 +89,7 @@ export default function PlayPage() {
     resetOnLoss: true,
   });
   const [autoBetStats, setAutoBetStats] = useState({ betsPlaced: 0, wins: 0, losses: 0, profit: BigInt(0) });
+  const [autoBetStatus, setAutoBetStatus] = useState<string>("");
   
   // Session key / skip wallet popup - sync with localStorage and session state
   const [skipWalletPopup, setSkipWalletPopup] = useState(false);
@@ -737,7 +738,15 @@ export default function PlayPage() {
     autoBetRunningRef.current = true;
     setAutoBetRunning(true);
     setAutoBetStats({ betsPlaced: 0, wins: 0, losses: 0, profit: BigInt(0) });
+    setAutoBetStatus("Starting...");
     setErrorMsg(null);
+
+    // Timeout helper to prevent hanging on network calls
+    const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)),
+      ]);
 
     const config = { ...autoBetConfig };
     const baseBet = parseEther(config.baseBet);
@@ -803,10 +812,12 @@ export default function PlayPage() {
         if (currentBet <= 0n) currentBet = baseBet;
 
         // --- Place bet via session key ---
-        const txHash = await placeBetWithSession(currentBet, oddsE18);
+        setAutoBetStatus(`Placing bet #${i + 1} (${Number(formatEther(currentBet)).toFixed(4)} CLAW)...`);
+        const txHash = await withTimeout(placeBetWithSession(currentBet, oddsE18), 30000, "Place bet");
         if (!txHash) throw new Error("Failed to submit bet transaction");
 
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        setAutoBetStatus(`Confirming bet #${i + 1}...`);
+        const receipt = await withTimeout(publicClient.waitForTransactionReceipt({ hash: txHash }), 60000, "Confirm bet");
         if (receipt.status !== "success") throw new Error("Bet transaction reverted");
 
         // Parse bet ID from events
@@ -823,6 +834,7 @@ export default function PlayPage() {
         if (!betId) throw new Error("Could not parse bet ID from transaction");
 
         // --- Wait for result block ---
+        setAutoBetStatus(`Waiting for result block...`);
         let betBlockNumber: bigint | null = null;
         for (let attempt = 0; attempt < 5; attempt++) {
           try {
@@ -849,10 +861,12 @@ export default function PlayPage() {
         }
 
         // --- Claim via sponsored tx ---
+        setAutoBetStatus(`Claiming bet #${i + 1}...`);
         let result: { won: boolean; payout: bigint } | null = null;
-        const claimHash = await sponsoredClaim(betId);
+        const claimHash = await withTimeout(sponsoredClaim(betId), 30000, "Submit claim");
         if (claimHash) {
-          const claimReceipt = await publicClient.waitForTransactionReceipt({ hash: claimHash, timeout: 60000 });
+          setAutoBetStatus(`Confirming claim #${i + 1}...`);
+          const claimReceipt = await withTimeout(publicClient.waitForTransactionReceipt({ hash: claimHash }), 60000, "Confirm claim");
           for (const log of claimReceipt.logs) {
             try {
               const decoded = decodeEventLog({ abi: CLAWDICE_ABI, data: log.data, topics: log.topics });
@@ -909,6 +923,7 @@ export default function PlayPage() {
 
     autoBetRunningRef.current = false;
     setAutoBetRunning(false);
+    setAutoBetStatus("");
     refetchBalance();
     if (betsPlaced > 0) {
       addNotification({
@@ -1623,11 +1638,16 @@ export default function PlayPage() {
                     </div>
 
                     {/* Auto Bet Stats */}
-                    {(autoBetStats.betsPlaced > 0 || autoBetRunning) && (
+                    {(autoBetStats.betsPlaced > 0 || autoBetRunning || autoBetStatus) && (
                       <div className="p-3 bg-white/30 rounded-xl text-sm">
-                        {autoBetRunning && (
+                        {autoBetRunning && autoBetStatus && (
                           <p className="text-xs text-center text-primary animate-pulse mb-2">
-                            Running bet {autoBetStats.betsPlaced + 1} of {autoBetConfig.numberOfBets}...
+                            {autoBetStatus}
+                          </p>
+                        )}
+                        {!autoBetRunning && errorMsg && errorMsg.startsWith("Auto-bet") && (
+                          <p className="text-xs text-center text-red-600 bg-red-50 rounded-lg p-2 mb-2 break-all">
+                            {errorMsg}
                           </p>
                         )}
                         <div className="grid grid-cols-4 gap-2 text-center">
