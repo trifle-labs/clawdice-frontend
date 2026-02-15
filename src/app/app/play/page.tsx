@@ -66,6 +66,7 @@ export default function PlayPage() {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const spinnerRef = useRef<HTMLDivElement>(null);
+  const autoBetRunningRef = useRef(false);
   const { addNotification } = useNotifications();
   const [pendingNotification, setPendingNotification] = useState<{ type: "success" | "error"; title: string; message: string } | null>(null);
   
@@ -721,6 +722,201 @@ export default function PlayPage() {
     }
   };
 
+  // Auto-bet: run a full bet cycle and return the result
+  const runAutoBet = useCallback(async () => {
+    if (!publicClient || !address) return;
+    if (!hasSession || !skipWalletPopup) {
+      setErrorMsg("Enable 'Skip wallet popup' above to use auto-bet");
+      return;
+    }
+    if (useETH) {
+      setErrorMsg("Auto-bet only works with CLAW tokens");
+      return;
+    }
+
+    autoBetRunningRef.current = true;
+    setAutoBetRunning(true);
+    setAutoBetStats({ betsPlaced: 0, wins: 0, losses: 0, profit: BigInt(0) });
+    setErrorMsg(null);
+
+    const config = { ...autoBetConfig };
+    const baseBet = parseEther(config.baseBet);
+    const maxBetLimit = config.maxBet ? parseEther(config.maxBet) : null;
+    const stopProfit = config.stopOnProfit ? parseEther(config.stopOnProfit) : null;
+    const stopLoss = config.stopOnLoss ? parseEther(config.stopOnLoss) : null;
+    const oddsE18 = BigInt(odds) * BigInt(10 ** 16);
+    const initialBalance = userTokenBalance || 0n;
+    const fibSeq = [1n, 1n, 2n, 3n, 5n, 8n, 13n, 21n, 34n, 55n, 89n, 144n];
+
+    let currentBet = baseBet;
+    let fibIndex = 0;
+    let totalProfit = 0n;
+    let betsPlaced = 0;
+    let wins = 0;
+    let losses = 0;
+    let lastWon: boolean | null = null;
+
+    try {
+      for (let i = 0; i < config.numberOfBets; i++) {
+        if (!autoBetRunningRef.current) break;
+
+        // Calculate next bet based on strategy (after first bet)
+        if (lastWon !== null) {
+          const shouldReset = (lastWon && config.resetOnWin) || (!lastWon && config.resetOnLoss);
+          if (shouldReset) {
+            currentBet = baseBet;
+            fibIndex = 0;
+          } else {
+            switch (config.strategy) {
+              case "flat":
+                currentBet = baseBet;
+                break;
+              case "martingale":
+                currentBet = lastWon ? baseBet : currentBet * 2n;
+                break;
+              case "antiMartingale":
+                currentBet = lastWon ? currentBet * 2n : baseBet;
+                break;
+              case "fibonacci":
+                fibIndex = lastWon ? Math.max(0, fibIndex - 2) : Math.min(fibSeq.length - 1, fibIndex + 1);
+                currentBet = baseBet * fibSeq[fibIndex];
+                break;
+              case "dalembert":
+                currentBet = lastWon
+                  ? (currentBet > baseBet ? currentBet - baseBet : baseBet)
+                  : currentBet + baseBet;
+                break;
+              case "kelly": {
+                const approxBalance = initialBalance + totalProfit;
+                if (initialBalance > 0n && approxBalance > 0n) {
+                  currentBet = (baseBet * approxBalance) / initialBalance;
+                  if (currentBet < 1n) currentBet = 1n;
+                }
+                break;
+              }
+            }
+          }
+        }
+
+        // Enforce limits
+        if (maxBetLimit && currentBet > maxBetLimit) currentBet = maxBetLimit;
+        if (currentBet <= 0n) currentBet = baseBet;
+
+        // --- Place bet via session key ---
+        const txHash = await placeBetWithSession(currentBet, oddsE18);
+        if (!txHash) throw new Error("Failed to submit bet transaction");
+
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success") throw new Error("Bet transaction reverted");
+
+        // Parse bet ID from events
+        let betId: bigint | null = null;
+        for (const log of receipt.logs) {
+          try {
+            const decoded = decodeEventLog({ abi: CLAWDICE_ABI, data: log.data, topics: log.topics });
+            if (decoded.eventName === "BetPlaced" || decoded.eventName === "BetPlacedViaSession") {
+              betId = (decoded.args as { betId: bigint }).betId;
+              break;
+            }
+          } catch {}
+        }
+        if (!betId) throw new Error("Could not parse bet ID from transaction");
+
+        // --- Wait for result block ---
+        let betBlockNumber: bigint | null = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            const betData = await publicClient.readContract({
+              address: CONTRACTS.baseSepolia.clawdice,
+              abi: CLAWDICE_ABI,
+              functionName: "getBet",
+              args: [betId],
+            }) as { blockNumber: bigint };
+            if (betData.blockNumber > 0n) { betBlockNumber = betData.blockNumber; break; }
+          } catch {}
+          await new Promise(r => setTimeout(r, 1000));
+        }
+
+        if (betBlockNumber) {
+          const targetBlock = betBlockNumber + 1n;
+          let curBlock = await publicClient.getBlockNumber();
+          while (curBlock <= targetBlock) {
+            await new Promise(r => setTimeout(r, 1000));
+            curBlock = await publicClient.getBlockNumber();
+          }
+        } else {
+          await new Promise(r => setTimeout(r, 3000));
+        }
+
+        // --- Claim via sponsored tx ---
+        let result: { won: boolean; payout: bigint } | null = null;
+        const claimHash = await sponsoredClaim(betId);
+        if (claimHash) {
+          const claimReceipt = await publicClient.waitForTransactionReceipt({ hash: claimHash, timeout: 60000 });
+          for (const log of claimReceipt.logs) {
+            try {
+              const decoded = decodeEventLog({ abi: CLAWDICE_ABI, data: log.data, topics: log.topics });
+              if (decoded.eventName === "BetResolved") {
+                const args = decoded.args as { won: boolean; payout: bigint };
+                result = { won: args.won, payout: args.won ? args.payout : 0n };
+                break;
+              }
+              if (!result && decoded.eventName === "BetClaimed") {
+                const args = decoded.args as { payout: bigint };
+                result = { won: true, payout: args.payout };
+              }
+            } catch {}
+          }
+        }
+
+        if (!result) {
+          // Could not determine result - skip this bet
+          betsPlaced++;
+          setAutoBetStats({ betsPlaced, wins, losses, profit: totalProfit });
+          continue;
+        }
+
+        // Update stats
+        betsPlaced++;
+        if (result.won) {
+          wins++;
+          totalProfit += result.payout - currentBet;
+          lastWon = true;
+        } else {
+          losses++;
+          totalProfit -= currentBet;
+          lastWon = false;
+        }
+        setAutoBetStats({ betsPlaced, wins, losses, profit: totalProfit });
+        refetchBalance();
+
+        // Check stop conditions
+        if (stopProfit && totalProfit >= stopProfit) {
+          addNotification({ type: "success", title: "Auto Bet Complete", message: `Profit target reached: +${Number(formatEther(totalProfit)).toFixed(2)} CLAW` });
+          break;
+        }
+        if (stopLoss && -totalProfit >= stopLoss) {
+          addNotification({ type: "error", title: "Auto Bet Stopped", message: `Loss limit reached: ${Number(formatEther(totalProfit)).toFixed(2)} CLAW` });
+          break;
+        }
+      }
+    } catch (err) {
+      console.error("Auto-bet error:", err);
+      addNotification({ type: "error", title: "Auto Bet Error", message: err instanceof Error ? err.message : "Unknown error" });
+    }
+
+    autoBetRunningRef.current = false;
+    setAutoBetRunning(false);
+    refetchBalance();
+    if (betsPlaced > 0) {
+      addNotification({
+        type: totalProfit >= 0n ? "success" : "error",
+        title: "Auto Bet Finished",
+        message: `${betsPlaced} bets | ${wins}W/${losses}L | ${totalProfit >= 0n ? "+" : ""}${Number(formatEther(totalProfit)).toFixed(2)} CLAW`,
+      });
+    }
+  }, [publicClient, address, hasSession, skipWalletPopup, useETH, autoBetConfig, odds, userTokenBalance, placeBetWithSession, sponsoredClaim, refetchBalance, addNotification]);
+
   return (
     <div className="min-h-screen bg-kawaii py-8 pt-20">
       {/* Auto-reveal Toasts */}
@@ -1187,7 +1383,7 @@ export default function PlayPage() {
               ) : (
                 <button
                   onClick={handlePlaceBet}
-                  disabled={!amount || isPending || isConfirming || isCreatingSession}
+                  disabled={!amount || isPending || isConfirming || isCreatingSession || autoBetRunning}
                   className="w-full btn-kawaii disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <Zap className="w-5 h-5" />
@@ -1450,18 +1646,24 @@ export default function PlayPage() {
                       </div>
                     )}
 
+                    {/* Session key requirement */}
+                    {!autoBetRunning && (!hasSession || !skipWalletPopup) && (
+                      <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2 text-center">
+                        Enable &quot;Skip wallet popup&quot; above to use auto-bet
+                      </p>
+                    )}
+
                     {/* Start/Stop Auto Bet */}
                     <button
                       onClick={() => {
                         if (autoBetRunning) {
+                          autoBetRunningRef.current = false;
                           setAutoBetRunning(false);
                         } else {
-                          // TODO: Implement auto-bet loop
-                          setAutoBetRunning(true);
-                          setAutoBetStats({ betsPlaced: 0, wins: 0, losses: 0, profit: BigInt(0) });
+                          runAutoBet();
                         }
                       }}
-                      disabled={!autoBetConfig.baseBet || autoBetConfig.numberOfBets < 1}
+                      disabled={!autoBetConfig.baseBet || autoBetConfig.numberOfBets < 1 || (!autoBetRunning && (!hasSession || !skipWalletPopup || useETH))}
                       className={clsx(
                         "w-full py-3 rounded-full font-bold transition-colors flex items-center justify-center gap-2",
                         autoBetRunning
