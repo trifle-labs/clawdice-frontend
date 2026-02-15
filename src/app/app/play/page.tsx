@@ -902,7 +902,9 @@ export default function PlayPage() {
       }
     } catch (err) {
       console.error("Auto-bet error:", err);
-      addNotification({ type: "error", title: "Auto Bet Error", message: err instanceof Error ? err.message : "Unknown error" });
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setErrorMsg(`Auto-bet failed: ${msg}`);
+      addNotification({ type: "error", title: "Auto Bet Error", message: msg });
     }
 
     autoBetRunningRef.current = false;
@@ -1623,6 +1625,11 @@ export default function PlayPage() {
                     {/* Auto Bet Stats */}
                     {(autoBetStats.betsPlaced > 0 || autoBetRunning) && (
                       <div className="p-3 bg-white/30 rounded-xl text-sm">
+                        {autoBetRunning && (
+                          <p className="text-xs text-center text-primary animate-pulse mb-2">
+                            Running bet {autoBetStats.betsPlaced + 1} of {autoBetConfig.numberOfBets}...
+                          </p>
+                        )}
                         <div className="grid grid-cols-4 gap-2 text-center">
                           <div>
                             <p className="text-foreground/60 text-xs">Bets</p>
