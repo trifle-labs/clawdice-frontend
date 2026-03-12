@@ -17,12 +17,12 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Clawdice - Provably Fair On-Chain Dice ✨",
+  title: "ClawRoulette - Provably Fair On-Chain Roulette ✨",
   description:
-    "Stake the house or test your luck. Every roll verified on Base blockchain.",
+    "Stake the house or test your luck. Every spin verified on Base blockchain.",
   openGraph: {
-    title: "Clawdice - Provably Fair On-Chain Dice ✨",
-    description: "Stake the house or test your luck. Every roll verified on Base.",
+    title: "ClawRoulette - Provably Fair On-Chain Roulette ✨",
+    description: "Stake the house or test your luck. Every spin verified on Base.",
     type: "website",
   },
 };

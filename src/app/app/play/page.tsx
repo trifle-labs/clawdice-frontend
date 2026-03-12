@@ -850,7 +850,7 @@ export default function PlayPage() {
         }
 
         if (betBlockNumber) {
-          const targetBlock = betBlockNumber + 1n;
+          const targetBlock = betBlockNumber + BigInt(1);
           let curBlock = await publicClient.getBlockNumber();
           while (curBlock <= targetBlock) {
             await new Promise(r => setTimeout(r, 1000));

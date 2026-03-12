@@ -13,7 +13,7 @@ export function Footer() {
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4">
             <Link href="/" className="font-display text-shimmer">
-              Clawdice
+              ClawRoulette
             </Link>
             <span className="text-foreground/30">·</span>
             <a

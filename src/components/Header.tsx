@@ -55,13 +55,13 @@ export function Header() {
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/logo.png"
-              alt="Clawdice"
+              alt="ClawRoulette"
               width={32}
               height={32}
               className="rounded-full"
             />
             <span className="text-lg font-display text-shimmer hidden sm:inline">
-              Clawdice
+              ClawRoulette
             </span>
           </Link>
 
@@ -71,6 +71,7 @@ export function Header() {
             <NavLink href="/stats">Stats</NavLink>
             <NavLink href="/app/stake">Stake</NavLink>
             <NavLink href="/app/play">Play</NavLink>
+            <NavLink href="/app/roulette">Roulette</NavLink>
             {isTestnet ? (
               <button
                 onClick={() => setSwapOpen(true)}
@@ -131,6 +132,7 @@ export function Header() {
             <NavLink href="/stats" onClick={() => setMenuOpen(false)}>Stats</NavLink>
             <NavLink href="/app/stake" onClick={() => setMenuOpen(false)}>Stake</NavLink>
             <NavLink href="/app/play" onClick={() => setMenuOpen(false)}>Play</NavLink>
+            <NavLink href="/app/roulette" onClick={() => setMenuOpen(false)}>Roulette</NavLink>
             {isTestnet ? (
               <button
                 onClick={() => { setSwapOpen(true); setMenuOpen(false); }}
