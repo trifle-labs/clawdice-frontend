@@ -1,39 +1,105 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 
 export type BetColor = "red" | "black";
 
-// Sub-slices per color sector for roulette-style visual texture
-const SLICES_PER_SECTOR = 18;
-// Minimum size (degrees) for the house-edge sector so it always stays visible
-const MIN_HOUSE_EDGE_DEG = 3.6; // 1% of 360°
-// Skip rendering a sector whose angular span is smaller than this threshold
-const MIN_SECTOR_DEG = 0.5;
+// 37 equal-sized slices (like European roulette: 36 coloured + 1 green)
+const TOTAL_SLICES = 37;
+const SLICE_DEG = 360 / TOTAL_SLICES; // ≈ 9.73°
+
+/**
+ * Distribute win/lose slices around the wheel using Bresenham's line
+ * algorithm.  This produces the most evenly-spaced alternating pattern
+ * possible for any win:lose ratio.
+ *
+ *   50% odds → WLWLWL… (perfect alternation, 18 each)
+ *   75% odds → LWWWLWWW… (9 L, 27 W — 3× more win slices)
+ *   25% odds → LLLWLLLW… (27 L, 9 W — 3× more lose slices)
+ *
+ * Green is inserted at index 0 as the single house-edge marker.
+ */
+function buildSliceLayout(odds: number): Array<"win" | "lose" | "green"> {
+  const numColored = TOTAL_SLICES - 1; // 36
+  // Clamp so there is always at least 1 win slice and 1 lose slice
+  const numWin = Math.min(Math.max(Math.round(numColored * (odds / 100)), 1), numColored - 1);
+  const colored: Array<"win" | "lose"> = [];
+  let err = 0;
+  for (let i = 0; i < numColored; i++) {
+    err += numWin;
+    if (err >= numColored) {
+      err -= numColored;
+      colored.push("win");
+    } else {
+      colored.push("lose");
+    }
+  }
+  return ["green", ...colored];
+}
+
+/**
+ * Select which specific slice to land on given the contract result.
+ * Win slices are distributed proportionally across the win-result range
+ * [0, adjustedWinChance); lose slices across [adjustedWinChance, 100).
+ * This guarantees the pointer always stops on the correct colour.
+ */
+function computeTargetSlice(
+  resultPosition: number,
+  won: boolean,
+  sliceLayout: Array<"win" | "lose" | "green">,
+  adjustedWinChance: number
+): number {
+  const winIndices = sliceLayout.reduce<number[]>(
+    (acc, c, i) => { if (c === "win") acc.push(i); return acc; },
+    []
+  );
+  const loseIndices = sliceLayout.reduce<number[]>(
+    (acc, c, i) => { if (c === "lose") acc.push(i); return acc; },
+    []
+  );
+
+  if (won) {
+    // Guard: if somehow winIndices is empty fall back to slice 1
+    if (winIndices.length === 0) return 1;
+    const frac = Math.min(Math.max(resultPosition / adjustedWinChance, 0), 1 - Number.EPSILON);
+    return winIndices[Math.floor(frac * winIndices.length)];
+  } else {
+    // Guard: if somehow loseIndices is empty fall back to last slice
+    if (loseIndices.length === 0) return TOTAL_SLICES - 1;
+    const loseRange = 100 - adjustedWinChance;
+    const frac = Math.min(
+      Math.max((resultPosition - adjustedWinChance) / loseRange, 0),
+      1 - Number.EPSILON
+    );
+    return loseIndices[Math.floor(frac * loseIndices.length)];
+  }
+}
 
 interface RouletteWheelProps {
-  odds: number;                  // Win chance percentage (5–95)
-  houseEdge?: number;            // House edge percentage (default 1)
+  /** Win-chance percentage (5–95), chosen by the player */
+  odds: number;
+  /** House edge percentage (default 1) */
+  houseEdge?: number;
   isSpinning: boolean;
-  resultPosition: number | null; // 0–100 raw position from contract
-  won: boolean | null;           // Win/loss from contract event
+  resultPosition: number | null;
+  won: boolean | null;
   betColor: BetColor;
   size?: number;
   onSpinComplete?: () => void;
 }
 
 /**
- * RouletteWheel - Proportional roulette wheel whose sector sizes reflect
- * the chosen odds.
+ * RouletteWheel — 37 equal-sized alternating slices that visually
+ * mirror a real roulette wheel.
  *
- * Layout in the wheel's coordinate system (0° = top, clockwise):
- *   0°         → winEndDeg   : bet color (win zone, odds% of wheel)
- *   winEndDeg  → houseEndDeg : green house-edge sliver
- *   houseEndDeg → 360°       : opposite color (lose zone)
+ * The number of win-colour vs lose-colour slices is proportional to the
+ * chosen odds: at 75% the wheel has 27 win-colour and 9 lose-colour slices
+ * (3:1 ratio), distributed evenly using Bresenham's algorithm so the wheel
+ * always looks naturally alternating regardless of the odds.
  *
- * The wheel rotates so that `(resultPosition / 100) * 360°` aligns with the
- * fixed pointer at the top.  Since the win zone starts at 0°, the pointer
- * lands in the correct zone whenever resultPosition < adjustedWinChance.
+ * Landing is reverse-engineered: the contract result determines which
+ * specific slice of the correct colour the wheel stops on, so the
+ * visual always agrees with the outcome.
  */
 export function RouletteWheel({
   odds,
@@ -45,19 +111,21 @@ export function RouletteWheel({
   size = 220,
   onSpinComplete,
 }: RouletteWheelProps) {
-  // Adjusted win chance: contract threshold after applying house edge
   const adjustedWinChance = odds * (1 - houseEdge / 100);
+  const sliceLayout = useMemo(() => buildSliceLayout(odds), [odds]);
 
-  // Sector boundaries in degrees
-  const winEndDeg = (adjustedWinChance / 100) * 360;
-  const houseDeg = Math.max(MIN_HOUSE_EDGE_DEG, (houseEdge / 100) * 360);
-  const houseEndDeg = winEndDeg + houseDeg;
-
-  // Target landing angle: maps resultPosition 0–100 → 0–360°
-  const targetDegrees = resultPosition !== null ? (resultPosition / 100) * 360 : 0;
+  // Reverse-engineer the exact slice to land on and convert to degrees
+  const targetDegrees = useMemo(() => {
+    if (resultPosition === null || won === null) return 0;
+    const sliceIdx = computeTargetSlice(
+      resultPosition, won, sliceLayout, adjustedWinChance
+    );
+    return (sliceIdx + 0.5) * SLICE_DEG; // centre of the target slice
+  }, [resultPosition, won, sliceLayout, adjustedWinChance]);
 
   const [rotation, setRotation] = useState(0);
   const [phase, setPhase] = useState<"idle" | "spinning" | "landing" | "done">("idle");
+  const [landedSliceIdx, setLandedSliceIdx] = useState<number | null>(null);
   const animationFrameRef = useRef<number>();
   const spinRotationRef = useRef(0);
 
@@ -66,14 +134,16 @@ export function RouletteWheel({
     if (isSpinning && resultPosition === null && phase === "idle") {
       setPhase("spinning");
       spinRotationRef.current = 0;
-    } else if (resultPosition !== null && phase === "spinning") {
+      setLandedSliceIdx(null);
+    } else if (resultPosition !== null && won !== null && phase === "spinning") {
       setPhase("landing");
     } else if (!isSpinning && resultPosition === null && phase !== "idle") {
       setPhase("idle");
       setRotation(0);
       spinRotationRef.current = 0;
+      setLandedSliceIdx(null);
     }
-  }, [isSpinning, resultPosition, phase]);
+  }, [isSpinning, resultPosition, won, phase]);
 
   // Continuous spin animation
   useEffect(() => {
@@ -89,7 +159,7 @@ export function RouletteWheel({
     };
   }, [phase]);
 
-  // Landing animation: 3 full extra spins then decelerate onto target
+  // Landing: 3 extra full spins then decelerate to target slice
   useEffect(() => {
     if (phase !== "landing") return;
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
@@ -101,12 +171,16 @@ export function RouletteWheel({
     const finalRotation = currentRot + 3 * 360 + delta;
     setRotation(finalRotation);
 
+    if (resultPosition !== null && won !== null) {
+      setLandedSliceIdx(computeTargetSlice(resultPosition, won, sliceLayout, adjustedWinChance));
+    }
+
     const timeoutId = setTimeout(() => {
       setPhase("done");
       onSpinComplete?.();
     }, 3000);
     return () => clearTimeout(timeoutId);
-  }, [phase, targetDegrees, onSpinComplete]);
+  }, [phase, targetDegrees, resultPosition, won, sliceLayout, adjustedWinChance, onSpinComplete]);
 
   const isLandingAnimation = phase === "landing";
   const center = size / 2;
@@ -121,14 +195,16 @@ export function RouletteWheel({
     [center]
   );
 
-  // Annular sector path between two angles
-  const sectorPath = useCallback(
-    (startDeg: number, endDeg: number) => {
+  // Annular sector path for one slice
+  const slicePath = useCallback(
+    (sliceIdx: number) => {
+      const startDeg = sliceIdx * SLICE_DEG;
+      const endDeg = (sliceIdx + 1) * SLICE_DEG;
       const s = angleToPoint(startDeg, radius);
       const e = angleToPoint(endDeg, radius);
       const si = angleToPoint(startDeg, innerRadius);
       const ei = angleToPoint(endDeg, innerRadius);
-      const largeArc = endDeg - startDeg > 180 ? 1 : 0;
+      const largeArc = 0; // SLICE_DEG ≈ 9.73° — never exceeds 180°
       return [
         `M ${si.x} ${si.y}`,
         `L ${s.x} ${s.y}`,
@@ -141,32 +217,12 @@ export function RouletteWheel({
     [angleToPoint, radius, innerRadius]
   );
 
-  // Split sector [startDeg, endDeg] into `n` equal sub-slices for texture
-  const buildSubSlices = useCallback(
-    (startDeg: number, endDeg: number, n: number): string[] => {
-      const sliceDeg = (endDeg - startDeg) / n;
-      return Array.from({ length: n }, (_, i) =>
-        sectorPath(startDeg + i * sliceDeg, startDeg + (i + 1) * sliceDeg)
-      );
-    },
-    [sectorPath]
-  );
-
   const winFill = betColor === "red" ? "url(#rwRedGrad)" : "url(#rwBlackGrad)";
   const loseFill = betColor === "red" ? "url(#rwBlackGrad)" : "url(#rwRedGrad)";
-
-  // Result badge: use `won` from contract so it's always accurate
   const landedColor =
     phase === "done" && won !== null
-      ? won
-        ? betColor
-        : betColor === "red"
-        ? "black"
-        : "red"
+      ? won ? betColor : betColor === "red" ? "black" : "red"
       : null;
-
-  const winSubSlices = winEndDeg > MIN_SECTOR_DEG ? buildSubSlices(0, winEndDeg, SLICES_PER_SECTOR) : [];
-  const loseSubSlices = houseEndDeg < 360 - MIN_SECTOR_DEG ? buildSubSlices(houseEndDeg, 360, SLICES_PER_SECTOR) : [];
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -176,14 +232,7 @@ export function RouletteWheel({
         height={size}
         className="absolute inset-0 drop-shadow-lg pointer-events-none"
       >
-        <circle
-          cx={center}
-          cy={center}
-          r={radius + 3}
-          fill="none"
-          stroke="#2D1B4E"
-          strokeWidth="6"
-        />
+        <circle cx={center} cy={center} r={radius + 3} fill="none" stroke="#2D1B4E" strokeWidth="6" />
       </svg>
 
       {/* Rotating wheel */}
@@ -213,37 +262,25 @@ export function RouletteWheel({
             </radialGradient>
           </defs>
 
-          {/* Win color sector (bet color) */}
-          {winSubSlices.map((d, i) => (
-            <path
-              key={`win-${i}`}
-              d={d}
-              fill={winFill}
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth="0.5"
-            />
-          ))}
+          {/* 37 equal-sized alternating slices */}
+          {sliceLayout.map((color, idx) => {
+            const fill =
+              color === "win" ? winFill
+              : color === "lose" ? loseFill
+              : "url(#rwGreenGrad)";
+            const isLanded = landedSliceIdx === idx && phase === "done";
+            return (
+              <path
+                key={idx}
+                d={slicePath(idx)}
+                fill={fill}
+                stroke={isLanded ? "#FFD700" : "rgba(255,255,255,0.2)"}
+                strokeWidth={isLanded ? 2 : 0.5}
+              />
+            );
+          })}
 
-          {/* House-edge sector (green sliver) */}
-          <path
-            d={sectorPath(winEndDeg, houseEndDeg)}
-            fill="url(#rwGreenGrad)"
-            stroke="rgba(255,255,255,0.15)"
-            strokeWidth="0.5"
-          />
-
-          {/* Lose color sector (opposite of bet color) */}
-          {loseSubSlices.map((d, i) => (
-            <path
-              key={`lose-${i}`}
-              d={d}
-              fill={loseFill}
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth="0.5"
-            />
-          ))}
-
-          {/* Center circle */}
+          {/* Centre hub */}
           <circle
             cx={center}
             cy={center}
@@ -255,7 +292,7 @@ export function RouletteWheel({
         </svg>
       </div>
 
-      {/* Fixed pointer (arrow at top) */}
+      {/* Fixed pointer */}
       <div className="absolute inset-0 pointer-events-none">
         <svg width={size} height={size}>
           <polygon
@@ -272,9 +309,7 @@ export function RouletteWheel({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div
             className="px-3 py-1.5 rounded-full text-white text-sm font-bold shadow-xl border-2 border-yellow-400"
-            style={{
-              backgroundColor: landedColor === "red" ? "#C0392B" : "#1A1A2A",
-            }}
+            style={{ backgroundColor: landedColor === "red" ? "#C0392B" : "#1A1A2A" }}
           >
             {won ? "WIN" : "LOSE"}
           </div>
