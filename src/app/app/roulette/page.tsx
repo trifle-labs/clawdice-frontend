@@ -27,12 +27,10 @@ import clsx from "clsx";
 
 type BetState = "idle" | "placing" | "waiting" | "claiming" | "won" | "lost";
 
-// European roulette: 18/37 odds in E18 format.
-// Pre-computed to avoid module-level BigInt arithmetic (incompatible with @vercel/nft).
-// Equivalent to (18n * 10n ** 18n) / 37n
-const ROULETTE_ODDS_E18 = BigInt("486486486486486486");
-const ROULETTE_WIN_CHANCE = (18 / 37) * 100; // ≈ 48.648%
-const ROULETTE_MULTIPLIER = 37 / 18; // ≈ 2.056x (before house edge)
+// European roulette constants replaced by variable odds from state.
+// The user picks their win chance (5–95%); the wheel sectors scale accordingly.
+// Constant for converting integer odds% to E18 contract format (same as play page).
+const ODDS_E16 = BigInt(10 ** 16);
 
 export default function RoulettePage() {
   const { address, isConnected } = useAccount();
@@ -57,6 +55,8 @@ export default function RoulettePage() {
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const [betColor, setBetColor] = useState<BetColor>("red");
   const currentBetColorRef = useRef<BetColor>("red");
+  // Win chance odds (5–95%), mirrors the play page slider
+  const [odds, setOdds] = useState(50);
   const [betState, setBetState] = useState<BetState>("idle");
   const [isRolling, setIsRolling] = useState(false);
   const [lastResult, setLastResult] = useState<{
@@ -135,7 +135,7 @@ export default function RoulettePage() {
     address: CONTRACTS.baseSepolia.clawdice,
     abi: CLAWDICE_ABI,
     functionName: "getMaxBet",
-    args: [ROULETTE_ODDS_E18 as unknown as bigint],
+    args: [BigInt(odds) * ODDS_E16],
   });
 
   useEffect(() => {
@@ -160,7 +160,8 @@ export default function RoulettePage() {
     error: txError,
   } = useWaitForTransactionReceipt({ hash: txHash });
 
-  const potentialPayout = amount ? parseFloat(amount) * ROULETTE_MULTIPLIER : 0;
+  const multiplier = 100 / odds;
+  const potentialPayout = amount ? parseFloat(amount) * multiplier : 0;
 
   const scrollToSpinner = useCallback(() => {
     setTimeout(() => {
@@ -523,7 +524,7 @@ export default function RoulettePage() {
       try {
         const txHash = await placeBetWithSession(
           parseEther(amount),
-          ROULETTE_ODDS_E18 as unknown as bigint
+          BigInt(odds) * ODDS_E16
         );
         if (txHash && publicClient) {
           const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -558,7 +559,7 @@ export default function RoulettePage() {
         address: CONTRACTS.baseSepolia.clawdice,
         abi: CLAWDICE_ABI,
         functionName: "placeBetWithETH",
-        args: [ROULETTE_ODDS_E18 as unknown as bigint, BigInt(0)],
+        args: [BigInt(odds) * ODDS_E16, BigInt(0)],
         value: parseEther(amount),
         gas: BigInt(500_000),
       });
@@ -567,7 +568,7 @@ export default function RoulettePage() {
         address: CONTRACTS.baseSepolia.clawdice,
         abi: CLAWDICE_ABI,
         functionName: "placeBet",
-        args: [parseEther(amount), ROULETTE_ODDS_E18 as unknown as bigint],
+        args: [parseEther(amount), BigInt(odds) * ODDS_E16],
       });
     }
   };
@@ -690,6 +691,8 @@ export default function RoulettePage() {
           {/* Roulette Wheel */}
           <div ref={spinnerRef} className="flex justify-center mb-6">
             <RouletteWheel
+              odds={odds}
+              houseEdge={1}
               isSpinning={isRolling}
               resultPosition={resultPosition}
               won={won}
@@ -914,16 +917,47 @@ export default function RoulettePage() {
                 </div>
               </div>
 
-              {/* Odds & Payout Display */}
-              <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-white/30 rounded-xl text-sm">
-                <div>
-                  <p className="text-foreground/60 text-xs">Win Chance</p>
-                  <p className="font-bold text-primary-dark">{ROULETTE_WIN_CHANCE.toFixed(2)}%</p>
-                  <p className="text-foreground/40 text-xs">18/37</p>
+              {/* Odds Slider */}
+              <div className="mb-4">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-foreground/60">Win Chance</span>
+                  <span className="text-primary-dark font-medium">{odds}%</span>
                 </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="95"
+                  value={odds}
+                  onChange={(e) => setOdds(parseInt(e.target.value))}
+                  className="w-full accent-primary"
+                />
+                {/* Odds Preset Buttons */}
+                <div className="flex gap-2 mt-2">
+                  {[10, 25, 50, 75, 90].map((pct) => (
+                    <button
+                      key={pct}
+                      onClick={() => setOdds(pct)}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-lg border-2 transition-colors ${
+                        odds === pct
+                          ? "border-primary bg-primary/10 text-primary-dark"
+                          : "border-foreground/20 hover:border-primary/50 text-foreground/70"
+                      }`}
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-between text-xs mt-2 text-foreground/50">
+                  <span>High risk</span>
+                  <span>Low risk</span>
+                </div>
+              </div>
+
+              {/* Payout Display */}
+              <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-white/30 rounded-xl text-sm">
                 <div>
                   <p className="text-foreground/60 text-xs">Multiplier</p>
-                  <p className="font-bold text-primary-dark">{ROULETTE_MULTIPLIER.toFixed(2)}x</p>
+                  <p className="font-bold text-primary-dark">{multiplier.toFixed(2)}x</p>
                 </div>
                 <div>
                   <p className="text-foreground/60 text-xs">Win</p>
@@ -1048,12 +1082,13 @@ export default function RoulettePage() {
           <Info className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
           <div className="text-xs text-foreground/60 space-y-1">
             <p>
-              European single-zero roulette. Red and black each cover{" "}
-              <span className="font-semibold">18/37 ≈ 48.65%</span> of the wheel.
+              Choose your win chance (5–95%). The wheel sectors scale to match:{" "}
+              <span className="font-semibold">your color covers exactly your chosen %</span> of the wheel.
             </p>
             <p>
-              The wheel is reverse-engineered to land on the correct color after each spin.
-              Result determined by next block&apos;s hash. 1% house edge. Claim within 255 blocks.
+              Result is determined by the next block&apos;s hash. The wheel
+              lands on the exact position matching the outcome. 1% house edge.
+              Claim within 255 blocks.
             </p>
           </div>
         </div>
