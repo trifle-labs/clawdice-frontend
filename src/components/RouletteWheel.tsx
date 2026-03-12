@@ -166,7 +166,10 @@ export function RouletteWheel({
 
     const currentRot = spinRotationRef.current;
     const currentAngle = ((currentRot % 360) + 360) % 360;
-    let delta = targetDegrees - currentAngle;
+    // CSS rotate(R) moves a slice at wheel angle θ to screen angle θ+R.
+    // To land the slice under the top pointer we need R = (360 - θ) mod 360.
+    const neededAngle = (360 - targetDegrees) % 360;
+    let delta = neededAngle - currentAngle;
     if (delta <= 0) delta += 360; // always go forward
     const finalRotation = currentRot + 3 * 360 + delta;
     setRotation(finalRotation);
