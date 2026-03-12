@@ -27,8 +27,10 @@ import clsx from "clsx";
 
 type BetState = "idle" | "placing" | "waiting" | "claiming" | "won" | "lost";
 
-// European roulette: 18/37 odds in E18 format (exact integer arithmetic)
-const ROULETTE_ODDS_E18 = (18n * 10n ** 18n) / 37n; // ≈ 486486486486486486
+// European roulette: 18/37 odds in E18 format.
+// Pre-computed to avoid module-level BigInt arithmetic (incompatible with @vercel/nft).
+// Equivalent to (18n * 10n ** 18n) / 37n
+const ROULETTE_ODDS_E18 = BigInt("486486486486486486");
 const ROULETTE_WIN_CHANCE = (18 / 37) * 100; // ≈ 48.648%
 const ROULETTE_MULTIPLIER = 37 / 18; // ≈ 2.056x (before house edge)
 
