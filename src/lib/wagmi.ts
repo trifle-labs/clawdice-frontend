@@ -7,8 +7,8 @@ const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || "";
 
 // Metadata for wallet display
 const metadata = {
-  name: "Clawdice",
-  description: "Provably fair on-chain dice game",
+  name: "ClawRoulette",
+  description: "Provably fair on-chain roulette game",
   url: "https://clawdice.xyz",
   icons: ["https://clawdice.xyz/logo.png"],
 };

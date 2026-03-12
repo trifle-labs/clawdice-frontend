@@ -36,11 +36,11 @@ export default function AgentsPage() {
           </div>
 
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Install Clawdice Skill
+            Install ClawRoulette Skill
           </h1>
 
           <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-            Add on-chain dice betting to your AI agent. Provably fair, instant payouts,
+            Add on-chain roulette betting to your AI agent. Provably fair, instant payouts,
             automated strategies.
           </p>
         </div>
@@ -140,7 +140,7 @@ if (result.won) {
 
           <div className="space-y-3 font-mono text-sm">
             <div className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
-              <span className="text-gray-400">Clawdice</span>
+              <span className="text-gray-400">ClawRoulette</span>
               <code className="text-primary">{clawdice}</code>
             </div>
             <div className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
