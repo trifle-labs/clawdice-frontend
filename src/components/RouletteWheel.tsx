@@ -220,8 +220,10 @@ export function RouletteWheel({
     [angleToPoint, radius, innerRadius]
   );
 
-  const winFill = betColor === "red" ? "url(#rwRedGrad)" : "url(#rwBlackGrad)";
-  const loseFill = betColor === "red" ? "url(#rwBlackGrad)" : "url(#rwRedGrad)";
+  // Site theme colours (kawaii pastel palette)
+  // "Red" bet → primary pink; "Black" bet → inverted: dark foreground as win, pink as lose
+  const aWinFill  = betColor === "red" ? "url(#rwPinkGrad)"  : "url(#rwDarkGrad)";
+  const aLoseFill = betColor === "red" ? "url(#rwDarkGrad)"  : "url(#rwPinkGrad)";
   const landedColor =
     phase === "done" && won !== null
       ? won ? betColor : betColor === "red" ? "black" : "red"
@@ -229,13 +231,20 @@ export function RouletteWheel({
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      {/* Static outer ring */}
+      {/* Static outer ring — site accent gradient */}
       <svg
         width={size}
         height={size}
         className="absolute inset-0 drop-shadow-lg pointer-events-none"
       >
-        <circle cx={center} cy={center} r={radius + 3} fill="none" stroke="#2D1B4E" strokeWidth="6" />
+        <defs>
+          <linearGradient id="rwRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"   stopColor="#E879A0" />
+            <stop offset="50%"  stopColor="#B8A9E8" />
+            <stop offset="100%" stopColor="#A8E6CF" />
+          </linearGradient>
+        </defs>
+        <circle cx={center} cy={center} r={radius + 3} fill="none" stroke="url(#rwRingGrad)" strokeWidth="6" />
       </svg>
 
       {/* Rotating wheel */}
@@ -251,57 +260,60 @@ export function RouletteWheel({
       >
         <svg width={size} height={size}>
           <defs>
-            <radialGradient id="rwRedGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#FF6B6B" />
-              <stop offset="100%" stopColor="#C0392B" />
+            {/* "Red" / win-when-red: site primary pink */}
+            <radialGradient id="rwPinkGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor="#F5A0C0" />
+              <stop offset="100%" stopColor="#D35D8A" />
             </radialGradient>
-            <radialGradient id="rwBlackGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#4A4A5A" />
-              <stop offset="100%" stopColor="#1A1A2A" />
+            {/* "Black" / win-when-black: site foreground dark */}
+            <radialGradient id="rwDarkGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor="#6B6B8A" />
+              <stop offset="100%" stopColor="#2D2D4E" />
             </radialGradient>
-            <radialGradient id="rwGreenGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#27AE60" />
-              <stop offset="100%" stopColor="#145A32" />
+            {/* Green house-edge slice: site mint */}
+            <radialGradient id="rwMintGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor="#A8E6CF" />
+              <stop offset="100%" stopColor="#5BB896" />
             </radialGradient>
           </defs>
 
           {/* 37 equal-sized alternating slices */}
           {sliceLayout.map((color, idx) => {
             const fill =
-              color === "win" ? winFill
-              : color === "lose" ? loseFill
-              : "url(#rwGreenGrad)";
+              color === "win"  ? aWinFill
+              : color === "lose" ? aLoseFill
+              : "url(#rwMintGrad)";
             const isLanded = landedSliceIdx === idx && phase === "done";
             return (
               <path
                 key={idx}
                 d={slicePath(idx)}
                 fill={fill}
-                stroke={isLanded ? "#FFD700" : "rgba(255,255,255,0.2)"}
+                stroke={isLanded ? "#E879A0" : "rgba(255,255,255,0.25)"}
                 strokeWidth={isLanded ? 2 : 0.5}
               />
             );
           })}
 
-          {/* Centre hub */}
+          {/* Centre hub — site background tint */}
           <circle
             cx={center}
             cy={center}
             r={innerRadius}
-            fill="#1A1A2A"
-            stroke="rgba(255,255,255,0.2)"
-            strokeWidth="1"
+            fill="#FFF0F5"
+            stroke="#E879A0"
+            strokeWidth="1.5"
           />
         </svg>
       </div>
 
-      {/* Fixed pointer */}
+      {/* Fixed pointer — site accent */}
       <div className="absolute inset-0 pointer-events-none">
         <svg width={size} height={size}>
           <polygon
             points={`${center},${center - radius - 2} ${center - 8},${center - radius + 12} ${center + 8},${center - radius + 12}`}
-            fill="#FFD700"
-            stroke="#B8860B"
+            fill="#B8A9E8"
+            stroke="#9B8AD4"
             strokeWidth="1"
           />
         </svg>
@@ -311,8 +323,11 @@ export function RouletteWheel({
       {phase === "done" && landedColor !== null && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div
-            className="px-3 py-1.5 rounded-full text-white text-sm font-bold shadow-xl border-2 border-yellow-400"
-            style={{ backgroundColor: landedColor === "red" ? "#C0392B" : "#1A1A2A" }}
+            className="px-3 py-1.5 rounded-full text-white text-sm font-bold shadow-xl border-2"
+            style={{
+              backgroundColor: landedColor === "red" ? "#D35D8A" : "#2D2D4E",
+              borderColor: "#B8A9E8",
+            }}
           >
             {won ? "WIN" : "LOSE"}
           </div>

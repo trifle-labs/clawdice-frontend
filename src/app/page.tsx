@@ -67,7 +67,7 @@ export default function Home() {
           <div className="flex justify-center mb-6">
             <Image
               src="/logo.png"
-              alt="Clawdice"
+              alt="ClawRoulette"
               width={140}
               height={140}
               className="drop-shadow-xl rounded-full"

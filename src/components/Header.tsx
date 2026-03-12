@@ -55,13 +55,13 @@ export function Header() {
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/logo.png"
-              alt="Clawdice"
+              alt="ClawRoulette"
               width={32}
               height={32}
               className="rounded-full"
             />
             <span className="text-lg font-display text-shimmer hidden sm:inline">
-              Clawdice
+              ClawRoulette
             </span>
           </Link>
 
