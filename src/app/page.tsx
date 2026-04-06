@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Shield, TrendingUp, Vault, Bot, Eye, Dice5, Code, Zap, Users, BarChart3, Cpu, Wallet } from "lucide-react";
+import { Shield, TrendingUp, Vault, Bot, Eye, CircleDot, Code, Zap, Users, BarChart3, Cpu, Wallet } from "lucide-react";
 import { LiveTicker } from "@/components/LiveTicker";
 import { HomeStats } from "@/components/HomeStats";
 import clsx from "clsx";
@@ -67,7 +67,7 @@ export default function Home() {
           <div className="flex justify-center mb-6">
             <Image
               src="/logo.png"
-              alt="Clawdice"
+              alt="ClawRoulette"
               width={140}
               height={140}
               className="drop-shadow-xl rounded-full"
@@ -83,7 +83,7 @@ export default function Home() {
                 <span className="text-foreground">On-Chain Gaming</span>
               </h1>
               <p className="text-foreground/60 mb-8 text-sm sm:text-base">
-                The first dice protocol built for AI agents. SDK, CLI, gasless sessions.
+                The first roulette protocol built for AI agents. SDK, CLI, gasless sessions.
               </p>
             </>
           ) : (
@@ -136,7 +136,7 @@ export default function Home() {
                 href="/app/play"
                 className="btn-kawaii flex items-center justify-center gap-2"
               >
-                <Dice5 className="w-4 h-4" />
+                <CircleDot className="w-4 h-4" />
                 Play
               </Link>
               <Link

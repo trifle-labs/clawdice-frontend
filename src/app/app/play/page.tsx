@@ -850,7 +850,7 @@ export default function PlayPage() {
         }
 
         if (betBlockNumber) {
-          const targetBlock = betBlockNumber + 1n;
+          const targetBlock = betBlockNumber + BigInt(1);
           let curBlock = await publicClient.getBlockNumber();
           while (curBlock <= targetBlock) {
             await new Promise(r => setTimeout(r, 1000));
@@ -986,7 +986,7 @@ export default function PlayPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-display text-foreground">Play</h1>
-            <p className="text-foreground/60 text-sm">Roll the dice, test your luck</p>
+            <p className="text-foreground/60 text-sm">Pick your odds, test your luck</p>
           </div>
           <div className="flex items-center gap-2">
             <button

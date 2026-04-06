@@ -1,6 +1,6 @@
 "use client";
 
-import { Dice5, Users, Coins, BarChart3 } from "lucide-react";
+import { CircleDot, Users, Coins, BarChart3 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { useStats, formatStatsForDisplay } from "@/hooks/useIndexer";
 import { useIndexedVaultTVL } from "@/hooks/useIndexedBalances";
@@ -30,7 +30,7 @@ export function HomeStats() {
       <StatCard
         label="Total Bets"
         value={isLoading ? "..." : displayStats?.totalBets || "0"}
-        icon={<Dice5 className="w-8 h-8" />}
+        icon={<CircleDot className="w-8 h-8" />}
       />
       <StatCard
         label="Unique Players"
